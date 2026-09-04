@@ -17,6 +17,9 @@ import urllib.request
 
 import websockets
 
+# Derrière le proxy Cloudflare, un User-Agent « script » prend un 403 sur les POST.
+UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
+
 
 def post(api: str, path: str, payload: dict | None, token: str | None = None) -> dict:
     req = urllib.request.Request(
@@ -24,6 +27,7 @@ def post(api: str, path: str, payload: dict | None, token: str | None = None) ->
         data=json.dumps(payload or {}).encode(),
         headers={
             "Content-Type": "application/json",
+            "User-Agent": UA,
             **({"Authorization": f"Bearer {token}"} if token else {}),
         },
         method="POST",
@@ -39,7 +43,9 @@ async def play_table(api: str, ws_base: str, idx: int, bots: int, difficulty: st
     bot_turn_since: dict[int, float] = {}
     started = time.monotonic()
     moves = 0
-    async with websockets.connect(f"{ws_base}/api/rooms/{code}/ws?token={token}") as ws:
+    async with websockets.connect(
+        f"{ws_base}/api/rooms/{code}/ws?token={token}", additional_headers={"User-Agent": UA}
+    ) as ws:
         for _ in range(bots):
             await ws.send(json.dumps({"action": "add_bot", "difficulty": difficulty}))
             await asyncio.sleep(0.3)
