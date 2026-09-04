@@ -48,7 +48,7 @@ export default function Page() {
   }, []);
 
   return (
-    <main className="mx-auto flex w-full max-w-md grow flex-col px-5 pb-8 pt-10">
+    <main className="mx-auto flex min-h-0 w-full max-w-md grow flex-col overflow-y-auto px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-10">
       <Wordmark compact={screen.name === "home"} />
       {screen.name === "choose" && (
         <ChooseProfile

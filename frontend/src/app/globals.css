@@ -37,6 +37,8 @@
 
 html {
   background: var(--color-felt-900);
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -44,7 +46,14 @@ body {
   /* Lumière de table : un halo au centre, les bords s'assombrissent. */
   background:
     radial-gradient(120vmax 90vmax at 50% 30%, var(--color-felt-700) 0%, var(--color-felt-800) 55%, var(--color-felt-900) 100%);
-  min-height: 100svh;
+  /* Le corps de page est un cadre fixe de la taille exacte de l'écran : rien ne
+     défile à ce niveau (sinon iOS fait rebondir toute l'app), chaque écran gère son
+     propre défilement interne. `position: fixed` neutralise le rebond de Safari. */
+  position: fixed;
+  inset: 0;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
   /* PWA plein écran (viewport-fit=cover) : la barre d'état iOS recouvre le haut de
      la page, on lui réserve sa hauteur. Le bas est géré écran par écran. */
   padding-top: env(safe-area-inset-top, 0px);

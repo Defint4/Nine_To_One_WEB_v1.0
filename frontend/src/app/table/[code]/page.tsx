@@ -131,7 +131,7 @@ function Room({ code, token }: { code: string; token: string }) {
   const inLobby = socket.view.status === "lobby";
 
   return (
-    <main className="relative mx-auto flex h-[calc(100svh-env(safe-area-inset-top,0px))] w-full max-w-md flex-col overflow-hidden">
+    <main className="relative mx-auto flex h-full w-full max-w-md flex-col overflow-hidden">
       <button
         type="button"
         onClick={() => setSettingsOpen(true)}
@@ -631,7 +631,7 @@ function LobbyChat({ socket, view }: { socket: RoomSocket; view: RoomView }) {
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center px-6 text-center text-ivory-dim">
+    <div className="flex h-full flex-col items-center justify-center overflow-y-auto px-6 text-center text-ivory-dim">
       {children}
     </div>
   );

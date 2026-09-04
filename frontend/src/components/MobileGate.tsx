@@ -53,7 +53,7 @@ export default function MobileGate({ children }: { children: React.ReactNode }) 
   if (state === "checking") return null;
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-md flex-col items-center justify-center gap-6 px-6 text-center">
+    <main className="mx-auto flex h-full w-full max-w-md flex-col items-center justify-center gap-6 overflow-y-auto px-6 text-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/icon-192.png" alt="" className="size-24 rounded-3xl shadow-card" />
       <div>
