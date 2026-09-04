@@ -1,0 +1,66 @@
+import type { OpenRoom, PlayerProfile } from "./types";
+
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+export function wsUrl(code: string, token: string): string {
+  const base = API_URL.replace(/^http/, "ws");
+  return `${base}/api/rooms/${code}/ws?token=${encodeURIComponent(token)}`;
+}
+
+export class ApiError extends Error {
+  constructor(public status: number, detail: string) {
+    super(detail);
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
+  });
+  if (!res.ok) {
+    let detail = "Le serveur ne répond pas comme prévu.";
+    try {
+      const body = await res.json();
+      if (typeof body.detail === "string") detail = body.detail;
+    } catch {
+      /* réponse sans corps JSON */
+    }
+    throw new ApiError(res.status, detail);
+  }
+  return res.json();
+}
+
+function authed(token: string): HeadersInit {
+  return { Authorization: `Bearer ${token}` };
+}
+
+export function enter(pseudo: string, avatar: string) {
+  return request<{ player: PlayerProfile; token: string }>("/api/players/enter", {
+    method: "POST",
+    body: JSON.stringify({ pseudo, avatar }),
+  });
+}
+
+export function fetchMe(token: string) {
+  return request<PlayerProfile>("/api/players/me", { headers: authed(token) });
+}
+
+export function fetchPlayerByPseudo(pseudo: string) {
+  return request<PlayerProfile>(`/api/players/by-pseudo/${encodeURIComponent(pseudo)}`);
+}
+
+export function createRoom(token: string) {
+  return request<{ code: string }>("/api/rooms", { method: "POST", headers: authed(token) });
+}
+
+export function joinRoom(token: string, code: string) {
+  return request<{ code: string }>(`/api/rooms/${code}/join`, {
+    method: "POST",
+    headers: authed(token),
+  });
+}
+
+export function listRooms() {
+  return request<OpenRoom[]>("/api/rooms");
+}

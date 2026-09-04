@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Node / Next
+node_modules/
+.next/
+
+# Secrets et configs locales
+.env
+.env.local
+.env.production
+!.env.example
+
+# Journal des parties (données de jeu, pas du code)
+backend/logs/
+
+# Artefacts d'entraînement (les poids exportés .npz sont versionnés, pas les checkpoints)
+ml/*.pt
+ml/*_league/
+
+# Outils locaux
+.claude/
+.DS_Store

@@ -1,0 +1,77 @@
+1. Préparation et distribution initiale
+Distribution des cartes :
+Chaque joueur reçoit trois ensembles de cartes :
+
+3 cartes face cachée : Disposées horizontalement sur la table (le dessous).
+3 cartes face découverte : Posées au-dessus des cartes cachées (visibles à tous).
+3 cartes en main : Cartes initiales avec lesquelles le joueur pourra échanger et jouer.
+Phase d'échange initiale :
+Avant de commencer le jeu, chaque joueur peut échanger autant de fois que souhaité ses cartes face découvertes avec les cartes qu’il détient en main.
+(Seules les cartes face découvertes sont concernées par cet échange.)
+
+2. Déroulement de la partie
+Début de la partie :
+Le joueur qui possède la carte la plus petite (le 3 par exemple mais si il n'y a pas de 3, c'est une autre plus petite, le 2 n'est pas concerné par cette règle.) commence la partie en posant cette carte.
+
+Règle de pioche immédiate :
+À chaque fois qu'un joueur pose une carte, s’il a moins de 3 cartes dans sa main, il doit piocher dans la pioche (qui contient initialement 52 cartes moins les cartes déjà distribué) pour reconstituer sa main à 3 cartes donc si il a plus de 3 cartes dans la main. Ce mécanisme s’applique tant que la pioche n’est pas épuisée.
+
+Tour de jeu :
+Chaque joueur, dans le sens horaire, doit poser une carte qui respecte les conditions suivantes :
+
+Soit la carte posée doit être supérieure ou égale à la carte déjà présente (selon les règles ci-dessous) ;
+En cas de carte spéciale, des règles particulières s’appliquent (voir section suivante).
+3. Pouvoirs et particularités des cartes
+Carte 2 :
+
+Peut être jouée à tout moment, quel que soit l’état du jeu.
+Une fois posée, le joueur suivant peut jouer n’importe quelle carte, sans contrainte.
+Carte 7 :
+
+Se joue si la carte posée précédemment est inférieure ou égale à 7 ou s’il s’agit d’un 9.
+Lorsqu’un joueur pose un 7, il choisit si le prochain joueur devra jouer une carte supérieure ou inférieure à 7(ou égale).
+
+Carte 9 :
+Se joue si la carte précédemment posée est inférieure ou égale à 9.
+Lorsqu’un joueur pose un 9, le joueur suivant est obligé de jouer une carte inférieure ou égale à 9.
+
+Carte 10 :
+
+Peut être jouée à tout moment, sauf si la situation exige de jouer en dessous (par exemple lorsqu’un 7 attend une carte inférieur ou si un 9 est posé et attend donc une carte inférieur).
+Lorsqu’un joueur pose un 10, il « coupe » le tas central : toutes les cartes accumulées au milieu sont retirées (envoyées à la défausse).
+Le joueur qui a joué le 10 a alors le droit de rejouer immédiatement.
+Les autres cartes (3, 4, 5, 6, 8, 11 (J), 12 (Q), 13 (K), 14 (A)) :
+
+Se jouent de manière classique, en respectant l’ordre (la plus basse est le 3, la plus haute l’As).
+En dehors des pouvoirs des cartes spéciales, le jeu suit cet ordre de valeurs.
+
+4. Gestion des situations où le joueur ne peut pas jouer
+Impossibilité de jouer :
+Si un joueur ne peut pas poser de carte parmi celles de sa main (aucune ne respecte les conditions imposées), il doit prendre toutes les cartes du tas central (les cartes accumulées lors des tours précédents).
+
+Conséquence sur la pioche :
+Après avoir dû prendre les cartes, le joueur ne piochera plus tant que sa main ne contient pas moins de 3 cartes.
+(Le joueur qui a provoqué cette situation – c’est-à-dire celui dont le coup a rendu le joueur inapte à jouer – peut alors rejouer.)
+
+5. Fin de la pioche et gestion des cartes restantes
+Épuisement de la pioche de 52 cartes :
+La partie continue même après que la pioche est vide.
+
+Utilisation des cartes face découvertes :
+
+Lorsque le joueur a vidé sa main (les 3 cartes initiales), il passe aux 3 cartes face découvertes, qui deviennent alors sa main active.
+Utilisation des cartes face cachées :
+
+Une fois les cartes face découvertes épuisées, le joueur pioche une par une les cartes face cachées qui deviennent sa main donc il n'a qu'une seul carte dans la main après avoir piocher cette carte..
+À chaque pioche, s’il ne peut pas jouer la carte ainsi révélée, il doit prendre toutes les cartes du tas central.
+5. cas spéciaux : 
+Si le joueur à 2 fois la même carte il peut ples poser toute les deux directement, ou choisir de n'en poser qu'une.
+Si sur le tas du milieu il y a 3 carte identique qui se suivre et qu'un joueur en pose une 4e, alors toutes les carte du tas vont à la défausse ça fonctionne comme une 10 et le joueur peut alors rejouer.
+exemple : il y a 3 valet(11) au milieu qui se suive, un joueur en pose un 4e, ça coupe et il rejoue.
+6. Fin de la partie
+Condition de victoire :
+La partie se termine lorsqu’il ne reste qu’un seul joueur ayant encore des cartes en main (les autres joueurs ayant réussi à se défausser de toutes leurs cartes).
+7. Addendum (précisions de Matthieu, sept. 2026)
+- Le joueur qui détient la plus petite carte (hors 2) commence, mais joue la carte qu'il veut. Égalité entre plusieurs joueurs : tirage au sort.
+- « Bonne pioche » : après avoir posé, si l'on pioche une carte de la même valeur, on peut la poser immédiatement — mais il faut être rapide : dès que le joueur suivant a agi, c'est trop tard. Idem pour une carte cachée retournée vite (si elle ne correspond pas, on la garde en main).
+- Cartes visibles : quand il ne reste qu'une carte en main et que la ou les cartes visibles ont la même valeur, on peut tout poser ensemble, sans limite de temps.

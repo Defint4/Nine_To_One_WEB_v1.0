@@ -1,0 +1,34 @@
+[Unit]
+Description=FastAPI Nine to One Backend
+After=network.target postgresql.service
+
+[Service]
+User=matthieu
+Group=www-data
+WorkingDirectory=/var/www/9to1/backend
+# Derrière nginx : sans cette variable, uvicorn voit 127.0.0.1 pour tout le monde et le
+# rate limiting (entrée par pseudo, création de table) devient un quota global.
+Environment=FORWARDED_ALLOW_IPS=127.0.0.1
+# Les bots calculent en numpy : un seul thread BLAS par réflexion, sinon numpy en ouvre
+# autant que de cœurs et le serveur s'écroule dès que deux bots réfléchissent.
+Environment=OMP_NUM_THREADS=1
+Environment=OPENBLAS_NUM_THREADS=1
+# Le binaire du venv directement, pas `uv run` : uv voudrait écrire dans ~/.cache/uv, ce
+# que le durcissement ci-dessous interdit. Le venv est construit par `uv sync` (deploy.sh).
+# Un seul worker, obligatoire : les tables vivent en mémoire du processus.
+ExecStart=/var/www/9to1/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8003 --proxy-headers
+Restart=always
+RestartSec=5
+# Les réflexions du bot Difficile passent après les autres sites du serveur.
+Nice=5
+
+# Durcissement : rien lu dans /home, écriture limitée au dossier du backend
+# (journal des parties dans logs/, __pycache__).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/www/9to1/backend
+
+[Install]
+WantedBy=multi-user.target

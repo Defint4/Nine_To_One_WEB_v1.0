@@ -1,0 +1,32 @@
+[project]
+name = "ninetoone-backend"
+version = "0.1.0"
+description = "API du jeu Nine to One — jeu de cartes multijoueur temps réel"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi[standard]>=0.115",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "pydantic-settings>=2.7",
+    "pyjwt>=2.10",
+    "slowapi>=0.1.9",
+    "numpy>=2.5.2",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.8", "pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Migrations générées par Alembic : format imposé par le template.
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# B008 : `Depends(...)` en valeur par défaut est le mécanisme d'injection de FastAPI.
+ignore = ["B008"]

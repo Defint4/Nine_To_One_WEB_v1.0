@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@theme {
+  /* Le feutre de la table : tout le jeu vit dessus. */
+  --color-felt-900: #0c2c22;
+  --color-felt-800: #123b2f;
+  --color-felt-700: #1b5443;
+  --color-felt-600: #256b56;
+  --color-felt-line: #2c6e59;
+
+  /* Le matériel du jeu : cartes ivoire, encre, rouge carte, or de table. */
+  --color-ivory: #faf7ee;
+  --color-ivory-dim: #e8e2d2;
+  --color-ink: #20241f;
+  --color-card-red: #c3402f;
+  --color-gold: #e5b54a;
+  --color-gold-deep: #c4923a;
+
+  --font-sans: var(--font-bricolage), system-ui, sans-serif;
+
+  --shadow-card: 0 2px 0 rgba(0, 0, 0, 0.18), 0 8px 18px rgba(0, 0, 0, 0.28);
+  --shadow-card-flat: 0 1px 0 rgba(0, 0, 0, 0.15), 0 3px 8px rgba(0, 0, 0, 0.2);
+
+  --animate-deal: deal 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes deal {
+  from {
+    transform: translateY(18px) scale(0.92);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+html {
+  background: var(--color-felt-900);
+}
+
+body {
+  color: var(--color-ivory);
+  /* Lumière de table : un halo au centre, les bords s'assombrissent. */
+  background:
+    radial-gradient(120vmax 90vmax at 50% 30%, var(--color-felt-700) 0%, var(--color-felt-800) 55%, var(--color-felt-900) 100%);
+  min-height: 100svh;
+  -webkit-tap-highlight-color: transparent;
+  /* Pas de rebond ni de pull-to-refresh : le jeu doit être stable sous le doigt. */
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* Tapis alternatifs (préférence locale, voir lib/prefs.ts). */
+html[data-felt="navy"] {
+  --color-felt-900: #0a1626;
+  --color-felt-800: #102138;
+  --color-felt-700: #1a3354;
+  --color-felt-600: #24466f;
+}
+
+html[data-felt="wine"] {
+  --color-felt-900: #26090e;
+  --color-felt-800: #3a1018;
+  --color-felt-700: #541a25;
+  --color-felt-600: #6e2431;
+}
+
+/* Secousse d'une carte injouable. */
+@keyframes card-nope {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  20% {
+    translate: -5px 0;
+  }
+  40% {
+    translate: 5px 0;
+  }
+  60% {
+    translate: -4px 0;
+  }
+  80% {
+    translate: 4px 0;
+  }
+}
+
+.animate-nope {
+  animation: card-nope 0.32s ease-in-out;
+}
+
+/* Halo qui respire sur le joueur dont c'est le tour. */
+@keyframes halo-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--color-gold);
+  }
+  50% {
+    box-shadow: 0 0 10px 4px color-mix(in srgb, var(--color-gold) 70%, transparent);
+  }
+}
+
+.animate-halo {
+  animation: halo-pulse 1.6s ease-in-out infinite;
+}
+
+/* « Bonne pioche » : la carte enchaînable réclame un tap rapide. */
+@keyframes urgent-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px var(--color-gold),
+      0 0 10px 2px rgba(229, 181, 74, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px var(--color-gold),
+      0 0 20px 7px rgba(229, 181, 74, 0.85);
+  }
+}
+
+.animate-urgent {
+  animation: urgent-pulse 0.55s ease-in-out infinite;
+}
+
+/* Tremblement bref de la table au moment d'une coupe. */
+@keyframes table-shake {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: -6px 2px;
+  }
+  50% {
+    translate: 5px -2px;
+  }
+  75% {
+    translate: -3px 1px;
+  }
+}
+
+.animate-table-shake {
+  animation: table-shake 0.35s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

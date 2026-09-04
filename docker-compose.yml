@@ -1,0 +1,23 @@
+# PostgreSQL pour le développement local uniquement.
+# En production la base est le PostgreSQL du VPS, partagé avec les autres sites.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: ninetoone-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ninetoone
+      POSTGRES_PASSWORD: ninetoone
+      POSTGRES_DB: ninetoone
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - ninetoone-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ninetoone"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  ninetoone-pgdata:
