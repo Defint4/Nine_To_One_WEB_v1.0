@@ -131,7 +131,7 @@ function Room({ code, token }: { code: string; token: string }) {
   const inLobby = socket.view.status === "lobby";
 
   return (
-    <main className="relative mx-auto flex h-svh w-full max-w-md flex-col overflow-hidden">
+    <main className="relative mx-auto flex h-[calc(100svh-env(safe-area-inset-top,0px))] w-full max-w-md flex-col overflow-hidden">
       <button
         type="button"
         onClick={() => setSettingsOpen(true)}
@@ -163,7 +163,7 @@ function Room({ code, token }: { code: string; token: string }) {
       )}
 
       {socket.error && (
-        <p className="fixed inset-x-4 top-4 z-50 rounded-xl bg-card-red px-4 py-3 text-center font-bold text-ivory shadow-card">
+        <p className="fixed inset-x-4 top-[calc(1rem+env(safe-area-inset-top,0px))] z-50 rounded-xl bg-card-red px-4 py-3 text-center font-bold text-ivory shadow-card">
           {socket.error}
         </p>
       )}

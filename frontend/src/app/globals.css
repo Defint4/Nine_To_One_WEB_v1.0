@@ -45,6 +45,9 @@ body {
   background:
     radial-gradient(120vmax 90vmax at 50% 30%, var(--color-felt-700) 0%, var(--color-felt-800) 55%, var(--color-felt-900) 100%);
   min-height: 100svh;
+  /* PWA plein écran (viewport-fit=cover) : la barre d'état iOS recouvre le haut de
+     la page, on lui réserve sa hauteur. Le bas est géré écran par écran. */
+  padding-top: env(safe-area-inset-top, 0px);
   -webkit-tap-highlight-color: transparent;
   /* Pas de rebond ni de pull-to-refresh : le jeu doit être stable sous le doigt. */
   overscroll-behavior: none;
