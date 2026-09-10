@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { APP_NAME } from "@/lib/games";
 
-/* Sur téléphone, le jeu se joue dans l'app installée (PWA), pas dans le navigateur.
+/* Sur téléphone, on joue dans l'app installée (PWA), pas dans le navigateur.
    Ce composant bloque le navigateur mobile et guide l'installation.
    Sur ordinateur, le navigateur reste libre. */
 
@@ -57,28 +58,32 @@ export default function MobileGate({ children }: { children: React.ReactNode }) 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/icon-192.png" alt="" className="size-24 rounded-3xl shadow-card" />
       <div>
-        <h1 className="text-3xl font-extrabold">Nine to One</h1>
+        <h1 className="text-3xl font-extrabold">{APP_NAME}</h1>
         <p className="mt-2 text-ivory-dim/90">
-          Le jeu se joue dans l&rsquo;application, pas dans le navigateur. Installe-la sur ton
-          écran d&rsquo;accueil, c&rsquo;est fait en dix secondes.
+          On joue dans l&rsquo;application, pas dans le navigateur. Installe-la sur ton écran
+          d&rsquo;accueil, c&rsquo;est fait en dix secondes.
         </p>
       </div>
 
       {installed ? (
         <p className="rounded-2xl bg-gold/15 px-4 py-3 font-bold text-gold ring-1 ring-gold/40">
-          C&rsquo;est installé ! Ouvre Nine to One depuis ton écran d&rsquo;accueil.
+          C&rsquo;est installé ! Ouvre {APP_NAME} depuis ton écran d&rsquo;accueil.
         </p>
       ) : ios ? (
         <ol className="flex flex-col gap-3 text-left">
           <li className="flex items-center gap-3 rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
-            <span className="text-2xl">1️⃣</span> Touche le bouton Partager
+            <span className="text-2xl">1️⃣</span> Touche le menu
+            <MoreIcon />
+          </li>
+          <li className="flex items-center gap-3 rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
+            <span className="text-2xl">2️⃣</span> Puis Partager
             <ShareIcon />
           </li>
           <li className="flex items-center gap-3 rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
-            <span className="text-2xl">2️⃣</span> Choisis « Sur l&rsquo;écran d&rsquo;accueil »
+            <span className="text-2xl">3️⃣</span> Choisis « Sur l&rsquo;écran d&rsquo;accueil »
           </li>
           <li className="flex items-center gap-3 rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
-            <span className="text-2xl">3️⃣</span> Lance le jeu depuis la nouvelle icône
+            <span className="text-2xl">4️⃣</span> Lance l&rsquo;app depuis la nouvelle icône
           </li>
         </ol>
       ) : installEvent ? (
@@ -92,10 +97,21 @@ export default function MobileGate({ children }: { children: React.ReactNode }) 
       ) : (
         <p className="rounded-2xl bg-black/25 p-4 text-left ring-1 ring-white/10">
           Dans le menu du navigateur (⋮), choisis « Ajouter à l&rsquo;écran d&rsquo;accueil »,
-          puis lance le jeu depuis la nouvelle icône.
+          puis lance l&rsquo;app depuis la nouvelle icône.
         </p>
       )}
     </main>
+  );
+}
+
+/* Les trois points verticaux du menu de Safari iOS. */
+function MoreIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-6 shrink-0 fill-gold">
+      <circle cx="12" cy="5" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="12" cy="19" r="2" />
+    </svg>
   );
 }
 

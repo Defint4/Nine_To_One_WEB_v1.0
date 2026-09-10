@@ -1,5 +1,6 @@
 /* Identités mémorisées sur l'appareil : un joueur revient et reprend son pseudo en un tap.
-   Le token signé prouve juste "ce pseudo sur cet appareil" — pas de compte, pas de mot de passe. */
+   Le token signé prouve juste "ce pseudo sur cet appareil" — pas de compte, pas de mot de passe.
+   Une seule identité pour tous les jeux de la plateforme. */
 
 export type StoredProfile = {
   pseudo: string;
@@ -8,8 +9,8 @@ export type StoredProfile = {
   lastUsed: number;
 };
 
-const KEY = "ninetoone:profiles";
-const CURRENT_KEY = "ninetoone:current";
+const KEY = "games:profiles";
+const CURRENT_KEY = "games:current";
 
 function read(): StoredProfile[] {
   try {
@@ -56,28 +57,30 @@ export function currentProfile(): StoredProfile | null {
   }
 }
 
-const TABLE_KEY = "ninetoone:last-table";
+/* Dernière table visitée, par jeu : permet de proposer « Reprendre la partie ». */
+function tableKey(game: string) {
+  return `games:last-table:${game}`;
+}
 
-/* Dernière table visitée : permet de proposer « Reprendre la partie » à l'accueil. */
-export function rememberTable(code: string) {
+export function rememberTable(game: string, code: string) {
   try {
-    localStorage.setItem(TABLE_KEY, code);
+    localStorage.setItem(tableKey(game), code);
   } catch {
     /* idem */
   }
 }
 
-export function lastTable(): string | null {
+export function lastTable(game: string): string | null {
   try {
-    return localStorage.getItem(TABLE_KEY);
+    return localStorage.getItem(tableKey(game));
   } catch {
     return null;
   }
 }
 
-export function forgetTable() {
+export function forgetTable(game: string) {
   try {
-    localStorage.removeItem(TABLE_KEY);
+    localStorage.removeItem(tableKey(game));
   } catch {
     /* idem */
   }

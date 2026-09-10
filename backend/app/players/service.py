@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.players.models import Player
+from app.players.models import Player, PlayerGameStats
 
 
 async def enter(db: AsyncSession, pseudo: str, avatar: str) -> Player:
@@ -30,14 +30,30 @@ async def get_player(db: AsyncSession, player_id: uuid.UUID) -> Player | None:
 
 
 async def record_game_results(
-    db: AsyncSession, player_ids: list[uuid.UUID], winner_id: uuid.UUID, loser_id: uuid.UUID
+    db: AsyncSession,
+    game: str,
+    player_ids: list[uuid.UUID],
+    winner_id: uuid.UUID,
+    loser_id: uuid.UUID,
 ) -> None:
-    """Stats de fin de partie : tous ont joué, le 1er sorti gagne, le dernier perd."""
-    result = await db.scalars(select(Player).where(Player.id.in_(player_ids)))
-    for player in result:
-        player.games_played += 1
-        if player.id == winner_id:
-            player.games_won += 1
-        if player.id == loser_id:
-            player.games_lost += 1
+    """Stats de fin de partie sur ce jeu : tous ont joué, un gagnant, un perdant."""
+    existing = {
+        s.player_id: s
+        for s in await db.scalars(
+            select(PlayerGameStats).where(
+                PlayerGameStats.game == game, PlayerGameStats.player_id.in_(player_ids)
+            )
+        )
+    }
+    for player_id in player_ids:
+        stats = existing.get(player_id)
+        if stats is None:
+            # Valeurs explicites : les `default` de colonne ne s'appliquent qu'à l'INSERT.
+            stats = PlayerGameStats(player_id=player_id, game=game, played=0, won=0, lost=0)
+            db.add(stats)
+        stats.played += 1
+        if player_id == winner_id:
+            stats.won += 1
+        if player_id == loser_id:
+            stats.lost += 1
     await db.commit()

@@ -20,7 +20,7 @@ export const FELT_STYLES: Record<FeltStyle, string> = {
   wine: "Tapis bordeaux",
 };
 
-const KEY = "ninetoone:prefs";
+const KEY = "games:prefs";
 
 type Prefs = { back: BackStyle; felt: FeltStyle };
 const DEFAULTS: Prefs = { back: "classic", felt: "green" };

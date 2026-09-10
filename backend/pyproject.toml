@@ -1,7 +1,7 @@
 [project]
-name = "ninetoone-backend"
+name = "games-backend"
 version = "0.1.0"
-description = "API du jeu Nine to One — jeu de cartes multijoueur temps réel"
+description = "API de la plateforme de jeux : identité par pseudo, tables temps réel, un module par jeu"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi[standard]>=0.115",
@@ -18,7 +18,7 @@ dependencies = [
 dev = ["ruff>=0.8", "pytest>=8"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["app"]
 
 [tool.ruff]
 line-length = 100

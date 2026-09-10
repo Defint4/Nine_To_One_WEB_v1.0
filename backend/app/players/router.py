@@ -19,14 +19,12 @@ async def enter(
     request: Request, payload: EnterRequest, db: AsyncSession = Depends(get_db)
 ) -> EnterResponse:
     player = await service.enter(db, payload.pseudo, payload.avatar)
-    return EnterResponse(
-        player=PlayerOut.model_validate(player), token=create_player_token(player.id)
-    )
+    return EnterResponse(player=PlayerOut.from_player(player), token=create_player_token(player.id))
 
 
 @router.get("/me", response_model=PlayerOut)
 async def me(player: Player = Depends(get_current_player)) -> PlayerOut:
-    return PlayerOut.model_validate(player)
+    return PlayerOut.from_player(player)
 
 
 @router.get("/by-pseudo/{pseudo}", response_model=PlayerOut)
@@ -36,4 +34,4 @@ async def by_pseudo(request: Request, pseudo: str, db: AsyncSession = Depends(ge
     player = await db.scalar(select(Player).where(Player.pseudo_key == pseudo.lower()))
     if player is None:
         raise HTTPException(status_code=404, detail="Joueur inconnu.")
-    return PlayerOut.model_validate(player)
+    return PlayerOut.from_player(player)

@@ -1,0 +1,15 @@
+[Unit]
+Description=Games web (Next.js)
+After=network.target
+
+[Service]
+User=matthieu
+Group=www-data
+WorkingDirectory=/var/www/games/frontend
+# `pnpm start` = `next start --port 3003` (package.json)
+ExecStart=/usr/bin/pnpm start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

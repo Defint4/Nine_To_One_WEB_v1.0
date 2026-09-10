@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import MobileGate from "@/components/MobileGate";
+import { APP_NAME } from "@/lib/games";
 import Providers from "./providers";
 
 const bricolage = Bricolage_Grotesque({
@@ -10,9 +11,9 @@ const bricolage = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  title: "Nine to One",
-  description: "Le jeu de cartes à jouer entre amis.",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Nine to One" },
+  title: APP_NAME,
+  description: "Des jeux entre amis, sur le téléphone.",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: APP_NAME },
   icons: { apple: "/apple-touch-icon.png" },
 };
 

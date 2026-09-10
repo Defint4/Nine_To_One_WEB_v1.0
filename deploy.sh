@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Mise à jour — à lancer sur le serveur depuis /var/www/9to1
+# Mise à jour — à lancer sur le serveur depuis /var/www/games
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -19,7 +19,7 @@ pnpm build
 cd ..
 
 echo "==> Redémarrage des services"
-sudo systemctl restart 9to1-backend 9to1-frontend
+sudo systemctl restart games-backend games-frontend
 
 echo "==> Déploiement terminé"
-sudo systemctl status 9to1-backend 9to1-frontend --no-pager -l | head -20
+sudo systemctl status games-backend games-frontend --no-pager -l | head -20

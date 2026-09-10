@@ -35,6 +35,8 @@ function authed(token: string): HeadersInit {
   return { Authorization: `Bearer ${token}` };
 }
 
+export type RoomRef = { code: string; game: string };
+
 export function enter(pseudo: string, avatar: string) {
   return request<{ player: PlayerProfile; token: string }>("/api/players/enter", {
     method: "POST",
@@ -50,17 +52,21 @@ export function fetchPlayerByPseudo(pseudo: string) {
   return request<PlayerProfile>(`/api/players/by-pseudo/${encodeURIComponent(pseudo)}`);
 }
 
-export function createRoom(token: string) {
-  return request<{ code: string }>("/api/rooms", { method: "POST", headers: authed(token) });
+export function createRoom(token: string, game: string) {
+  return request<RoomRef>("/api/rooms", {
+    method: "POST",
+    headers: authed(token),
+    body: JSON.stringify({ game }),
+  });
 }
 
 export function joinRoom(token: string, code: string) {
-  return request<{ code: string }>(`/api/rooms/${code}/join`, {
+  return request<RoomRef>(`/api/rooms/${code}/join`, {
     method: "POST",
     headers: authed(token),
   });
 }
 
-export function listRooms() {
-  return request<OpenRoom[]>("/api/rooms");
+export function listRooms(game: string) {
+  return request<OpenRoom[]>(`/api/rooms?game=${encodeURIComponent(game)}`);
 }

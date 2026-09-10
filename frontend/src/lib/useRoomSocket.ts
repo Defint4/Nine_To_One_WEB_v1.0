@@ -3,23 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { joinRoom, wsUrl } from "./api";
 import { sfx } from "./sound";
-import type { BotDifficulty, ChatEntry, GameEvent, RoomView, ServerMessage } from "./types";
+import type { BaseRoomView, BotDifficulty, ChatEntry, GameEvent, ServerMessage } from "./types";
+
+/* Connexion WebSocket à une table, commune à tous les jeux : vue, chat, emotes, bots,
+   timer, revanche, reconnexion. Les actions propres à un jeu passent par `send`
+   (voir src/games/<slug>/socket.ts). */
 
 export type EmoteEvent = { id: number; seat: number; emote: string; target: number | null };
 
-export type RoomSocket = {
-  view: RoomView | null;
+export type RoomSocket<V extends BaseRoomView = BaseRoomView> = {
+  view: V | null;
   chat: ChatEntry[];
   emotes: EmoteEvent[];
   error: string | null;
   closedReason: string | null;
   rematchCode: string | null;
-  swap: (handIndex: number, faceUpIndex: number) => void;
-  setReady: (ready: boolean) => void;
-  play: (value: number, count: number, direction?: ">=" | "<=") => void;
-  flip: (index: number) => void;
-  chase: (count: number) => void;
-  chaseFlip: (index: number) => void;
+  send: (payload: Record<string, unknown>) => void;
   sendChat: (text: string) => void;
   sendEmote: (emote: string, target?: number) => void;
   setTurnSeconds: (seconds: number) => void;
@@ -27,7 +26,7 @@ export type RoomSocket = {
   removeBot: (seat: number) => void;
   rematch: () => void;
   leave: () => void;
-  onEvents: (handler: (events: GameEvent[], nextView: RoomView) => void) => void;
+  onEvents: (handler: (events: GameEvent[], nextView: V) => void) => void;
 };
 
 const CLOSE_REASONS: Record<number, string> = {
@@ -38,17 +37,18 @@ const CLOSE_REASONS: Record<number, string> = {
 
 let emoteId = 0;
 
-export function useRoomSocket(code: string, token: string | null): RoomSocket {
-  const [view, setView] = useState<RoomView | null>(null);
+export function useRoomSocket<V extends BaseRoomView>(
+  code: string,
+  token: string | null
+): RoomSocket<V> {
+  const [view, setView] = useState<V | null>(null);
   const [chat, setChat] = useState<ChatEntry[]>([]);
   const [emotes, setEmotes] = useState<EmoteEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [closedReason, setClosedReason] = useState<string | null>(null);
   const [rematchCode, setRematchCode] = useState<string | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
-  const eventsHandlerRef = useRef<((events: GameEvent[], nextView: RoomView) => void) | null>(
-    null
-  );
+  const eventsHandlerRef = useRef<((events: GameEvent[], nextView: V) => void) | null>(null);
   const retryRef = useRef(0);
   const rejoinRef = useRef(0);
 
@@ -62,7 +62,7 @@ export function useRoomSocket(code: string, token: string | null): RoomSocket {
       socketRef.current = socket;
 
       socket.onmessage = (raw) => {
-        const msg = JSON.parse(raw.data) as ServerMessage;
+        const msg = JSON.parse(raw.data) as ServerMessage<V>;
         if (msg.type === "state") {
           retryRef.current = 0;
           setView(msg.view);
@@ -146,19 +146,7 @@ export function useRoomSocket(code: string, token: string | null): RoomSocket {
     error,
     closedReason,
     rematchCode,
-    swap: useCallback(
-      (handIndex, faceUpIndex) =>
-        send({ action: "swap", hand_index: handIndex, face_up_index: faceUpIndex }),
-      [send]
-    ),
-    setReady: useCallback((ready) => send({ action: "ready", ready }), [send]),
-    play: useCallback(
-      (value, count, direction) => send({ action: "play", value, count, direction }),
-      [send]
-    ),
-    flip: useCallback((index) => send({ action: "flip", index }), [send]),
-    chase: useCallback((count) => send({ action: "chase", count }), [send]),
-    chaseFlip: useCallback((index) => send({ action: "chase_flip", index }), [send]),
+    send,
     sendChat: useCallback((text) => send({ action: "chat", text }), [send]),
     sendEmote: useCallback((emote, target) => send({ action: "emote", emote, target }), [send]),
     setTurnSeconds: useCallback(

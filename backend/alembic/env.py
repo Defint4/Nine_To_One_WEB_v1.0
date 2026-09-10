@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.core.config import settings
 from app.core.database import Base
-from app.players import models as _players_models  # noqa: F401
+from app.players import models as _players_models  # noqa: F401  (toutes les tables : players, player_game_stats)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

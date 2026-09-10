@@ -1,8 +1,9 @@
+/* Types communs à la plateforme : identité, tables, messages WebSocket.
+   Chaque jeu étend BaseRoomView / BasePlayerView dans src/games/<slug>/types.ts. */
+
 export type Suit = "hearts" | "diamonds" | "clubs" | "spades";
 
 export type CardT = { value: number; suit: Suit };
-
-export type Constraint = { comparator: ">=" | "<="; value: number };
 
 export type BotDifficulty = "easy" | "normal" | "hard";
 
@@ -12,62 +13,52 @@ export const BOT_LABELS: Record<BotDifficulty, string> = {
   hard: "Difficile",
 };
 
-export type PlayerView = {
+/* Fiche d'un siège, telle que la plateforme la décrit (le jeu y ajoute ses champs). */
+export type BasePlayerView = {
   seat: number;
   pseudo: string;
   avatar: string;
   connected: boolean;
   bot: BotDifficulty | null;
-  ready: boolean;
-  finish_rank: number | null;
-  hand_count: number;
-  face_up: CardT[];
-  face_down_count: number;
-  hand: CardT[] | null;
 };
 
-export type RoomView = {
+export type BaseRoomView = {
   code: string;
+  game: string;
   status: "lobby" | "playing" | "finished";
   your_seat: number;
   turn: number | null;
-  constraint: Constraint | null;
-  required_first_value: number | null;
-  pile: CardT[];
-  draw_count: number;
-  discard_count: number;
-  players: PlayerView[];
-  playable_values: number[];
-  must_flip: boolean;
+  players: BasePlayerView[];
   turn_seconds: number;
   turn_remaining: number | null;
-  stats: { moves: number; pickups: Record<string, number> };
-  last_play_seat: number | null;
-  chase_value: number | null;
 };
 
 export type GameEvent = { type: string; [key: string]: unknown };
 
 export type ChatEntry = { type: "chat"; seat: number; text: string };
 
-export type ServerMessage =
-  | { type: "state"; events: GameEvent[]; view: RoomView; chat?: ChatEntry[] }
+export type ServerMessage<V extends BaseRoomView = BaseRoomView> =
+  | { type: "state"; events: GameEvent[]; view: V; chat?: ChatEntry[] }
   | ChatEntry
   | { type: "emote"; seat: number; emote: string; target: number | null }
   | { type: "rematch"; code: string }
   | { type: "error"; detail: string };
 
+export type GameStats = { played: number; won: number; lost: number };
+
 export type PlayerProfile = {
   id: string;
   pseudo: string;
   avatar: string;
-  games_played: number;
-  games_won: number;
-  games_lost: number;
+  /* Par jeu (clé = slug) ; absent si jamais joué. */
+  stats: Record<string, GameStats>;
 };
+
+export const NO_STATS: GameStats = { played: 0, won: 0, lost: 0 };
 
 export type OpenRoom = {
   code: string;
+  game: string;
   players: { pseudo: string; avatar: string }[];
   seats_taken: number;
   seats_max: number;

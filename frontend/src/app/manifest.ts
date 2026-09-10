@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
+import { APP_NAME } from "@/lib/games";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Nine to One",
-    short_name: "Nine to One",
-    description: "Le jeu de cartes à jouer entre amis.",
+    name: APP_NAME,
+    short_name: APP_NAME,
+    description: "Des jeux entre amis, sur le téléphone.",
     start_url: "/",
     display: "standalone",
     orientation: "portrait",

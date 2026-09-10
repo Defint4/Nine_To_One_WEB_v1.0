@@ -1,17 +1,23 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.rooms.manager import Room
 
 
+class CreateRoomRequest(BaseModel):
+    game: str = Field(pattern=r"^[a-z0-9\-]{1,40}$")
+
+
 class RoomOut(BaseModel):
     code: str
+    game: str
 
 
 def open_room_summary(room: Room) -> dict:
-    """Résumé public d'un lobby rejoignable (liste des parties)."""
+    """Résumé public d'un lobby rejoignable (liste des tables)."""
     return {
         "code": room.code,
+        "game": room.game,
         "players": [{"pseudo": s.pseudo, "avatar": s.avatar} for s in room.seats],
         "seats_taken": len(room.seats),
-        "seats_max": 5,
+        "seats_max": room.spec.max_players,
     }

@@ -1,7 +1,7 @@
 /* Sons du jeu : vrais bruits de cartes (pack casino de Kenney, CC0, /public/sounds),
    plus un petit carillon synthétisé pour signaler ton tour. */
 
-const KEY = "ninetoone:muted";
+const KEY = "games:muted";
 let ctx: AudioContext | null = null;
 const raw = new Map<string, ArrayBuffer>();
 const buffers = new Map<string, AudioBuffer>();

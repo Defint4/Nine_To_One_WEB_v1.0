@@ -19,8 +19,8 @@ node_modules/
 backend/logs/
 
 # Artefacts d'entraînement (les poids exportés .npz sont versionnés, pas les checkpoints)
-ml/*.pt
-ml/*_league/
+ml/*/*.pt
+ml/*/*_league/
 
 # Outils locaux
 .claude/

@@ -26,9 +26,7 @@ async def lifespan(app: FastAPI):
     cleanup_task.cancel()
 
 
-app = FastAPI(
-    title="Nine to One API", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan
-)
+app = FastAPI(title="Games API", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)

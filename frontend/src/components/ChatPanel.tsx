@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { RoomView } from "@/lib/types";
+import type { BaseRoomView } from "@/lib/types";
 import type { RoomSocket } from "@/lib/useRoomSocket";
 
 /* Le chat complet : tout l'historique + saisie. Affiché dans une bottom-sheet. */
-export default function ChatPanel({ socket, view }: { socket: RoomSocket; view: RoomView }) {
+export default function ChatPanel({ socket, view }: { socket: RoomSocket; view: BaseRoomView }) {
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -66,7 +66,7 @@ export function RecentChat({
   limit = 3,
 }: {
   socket: RoomSocket;
-  view: RoomView;
+  view: BaseRoomView;
   onOpen: () => void;
   limit?: number;
 }) {
