@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
+import { ShufflingCards } from "@/components/Loading";
 import { ApiError, enter } from "@/lib/api";
 import { GALLERY } from "@/lib/avatars";
 import { APP_NAME, HUB_PATH } from "@/lib/games";
@@ -30,6 +31,8 @@ export default function Page() {
   const [screen, setScreen] = useState<Screen>({ name: "loading" });
 
   useEffect(() => {
+    // La sélection des jeux est la page suivante dans tous les cas : on la précharge.
+    router.prefetch(AFTER_ENTER);
     if (currentProfile()) {
       router.replace(AFTER_ENTER);
       return;
@@ -46,6 +49,12 @@ export default function Page() {
         <h1 className="text-4xl font-extrabold tracking-tight">{APP_NAME}</h1>
         <p className="mt-1 text-sm text-ivory-dim/80">Des jeux entre amis, sur le téléphone.</p>
       </header>
+      {screen.name === "loading" && (
+        <div className="flex flex-col items-center gap-4 pt-6 text-ivory-dim">
+          <ShufflingCards />
+          <p className="text-sm">Un instant…</p>
+        </div>
+      )}
       {screen.name === "choose" && (
         <ChooseProfile
           profiles={screen.profiles}

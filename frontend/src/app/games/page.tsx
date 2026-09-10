@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
+import { LoadingScreen } from "@/components/Loading";
 import PlayingCard, { CardBackLabel } from "@/components/PlayingCard";
 import { fetchMe } from "@/lib/api";
 import { GAMES, type GameMeta } from "@/lib/games";
@@ -42,7 +43,7 @@ export default function Page() {
     enabled: profile !== null,
   });
 
-  if (!profile) return null;
+  if (!profile) return <LoadingScreen label="Un instant…" />;
 
   return (
     <main className="mx-auto flex min-h-0 w-full max-w-md grow flex-col overflow-y-auto px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-6">
