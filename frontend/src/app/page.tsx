@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
 import { ApiError, enter } from "@/lib/api";
 import { GALLERY } from "@/lib/avatars";
-import { APP_NAME, GAMES } from "@/lib/games";
+import { APP_NAME, HUB_PATH } from "@/lib/games";
 import {
   currentProfile,
   forgetProfile,
@@ -16,10 +16,9 @@ import {
 } from "@/lib/identity";
 
 /* L'entrée de la plateforme : qui joue ? Un pseudo et un avatar, mémorisés sur
-   l'appareil. Une fois identifié, on va à la sélection des jeux — en attendant
-   cette page, directement au seul jeu disponible. */
+   l'appareil. Une fois identifié, on va à la sélection des jeux. */
 
-const AFTER_ENTER = GAMES[0].path;
+const AFTER_ENTER = HUB_PATH;
 
 type Screen =
   | { name: "loading" }

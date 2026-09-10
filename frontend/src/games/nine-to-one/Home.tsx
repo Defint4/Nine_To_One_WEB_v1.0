@@ -1,12 +1,13 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
 import { ApiError, createRoom, fetchMe, joinRoom, listRooms } from "@/lib/api";
-import { tablePath } from "@/lib/games";
-import { currentProfile, forgetTable, lastTable, signOut, type StoredProfile } from "@/lib/identity";
+import { HUB_PATH, tablePath } from "@/lib/games";
+import { currentProfile, forgetTable, lastTable, type StoredProfile } from "@/lib/identity";
 import { preloadCards } from "@/lib/preloadCards";
 import { NO_STATS } from "@/lib/types";
 import { GAME } from "./meta";
@@ -34,22 +35,20 @@ export default function Home() {
   }, [router]);
 
   return (
-    <main className="mx-auto flex min-h-0 w-full max-w-md grow flex-col overflow-y-auto px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-10">
+    <main className="mx-auto flex min-h-0 w-full max-w-md grow flex-col overflow-y-auto px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4">
+      <Link
+        href={HUB_PATH}
+        className="mb-4 self-start rounded-xl py-2 pr-3 text-sm font-semibold text-ivory-dim/75 hover:text-ivory"
+      >
+        ‹ Tous les jeux
+      </Link>
       <Wordmark compact />
-      {profile && (
-        <Lobby
-          profile={profile}
-          onSignOut={() => {
-            signOut();
-            router.replace("/");
-          }}
-        />
-      )}
+      {profile && <Lobby profile={profile} />}
     </main>
   );
 }
 
-function Lobby({ profile, onSignOut }: { profile: StoredProfile; onSignOut: () => void }) {
+function Lobby({ profile }: { profile: StoredProfile }) {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -100,13 +99,6 @@ function Lobby({ profile, onSignOut }: { profile: StoredProfile; onSignOut: () =
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onSignOut}
-          className="rounded-xl px-3 py-2 text-sm text-ivory-dim/70 hover:text-ivory"
-        >
-          Changer
-        </button>
       </div>
 
       {resumeCode && (
