@@ -19,9 +19,10 @@
   --font-sans: var(--font-bricolage), system-ui, sans-serif;
 
   --shadow-card: 0 2px 0 rgba(0, 0, 0, 0.18), 0 8px 18px rgba(0, 0, 0, 0.28);
-  /* Pas d'ombre dure décalée d'un pixel : sur une carte tournée elle fait un bord
-     sale d'un seul côté. Une ombre douce, symétrique, et une plus large pour le relief. */
-  --shadow-card-flat: 0 0 1px rgba(0, 0, 0, 0.35), 0 3px 8px rgba(0, 0, 0, 0.22);
+  /* Jamais de liseré serré (0 0 1px) ni d'ombre dure décalée d'un pixel : sur une
+     carte tournée, un trait d'un pixel se découpe en tirets le long du bord et la carte
+     paraît rayée. Deux ombres douces, pour le relief seulement. */
+  --shadow-card-flat: 0 2px 5px rgba(0, 0, 0, 0.28), 0 6px 14px rgba(0, 0, 0, 0.18);
 
   --animate-deal: deal 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -78,6 +79,17 @@ html[data-felt="wine"] {
   --color-felt-800: #3a1018;
   --color-felt-700: #541a25;
   --color-felt-600: #6e2431;
+}
+
+/* Une carte posée de biais : sans ceci, Safari (et parfois Chrome) ne lisse pas le
+   bord d'un élément tourné et l'escalier se voit sur chaque carte. Forcer une couche
+   propre (backface-visibility) rend le bord anticrénelé ; le contour transparent
+   arrondit le dernier pixel. */
+.card-edge {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  outline: 1px solid transparent;
+  transform: translateZ(0);
 }
 
 /* Secousse d'une carte injouable. */

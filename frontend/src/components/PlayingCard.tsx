@@ -21,15 +21,18 @@ const SUIT_GLYPH = {
   spades: "♠",
 } as const;
 
-/* Dos de cartes : motif choisi dans les paramètres, dessiné en CSS pur. */
+/* Dos de cartes : motif choisi dans les paramètres, dessiné en CSS pur. Les rayures
+   ont un bord fondu d'un pixel (pas d'arrêt net dans le dégradé) : un dégradé à
+   arrêts francs n'est pas lissé par le navigateur et crénelle, surtout en petit et
+   sur une carte tournée. */
 const BACK_CSS: Record<BackStyle, React.CSSProperties> = {
   classic: {
     background:
-      "repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 3px, transparent 3px 9px), var(--color-felt-700)",
+      "repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0 2px, transparent 3.2px 7.8px, rgba(255,255,255,0.05) 9px), var(--color-felt-700)",
   },
   crimson: {
     background:
-      "repeating-linear-gradient(45deg, rgba(255,255,255,0.07) 0 2px, transparent 2px 8px), repeating-linear-gradient(-45deg, rgba(255,255,255,0.07) 0 2px, transparent 2px 8px), #6e1f26",
+      "repeating-linear-gradient(45deg, rgba(255,255,255,0.07) 0 1.2px, transparent 2.4px 6.8px, rgba(255,255,255,0.07) 8px), repeating-linear-gradient(-45deg, rgba(255,255,255,0.07) 0 1.2px, transparent 2.4px 6.8px, rgba(255,255,255,0.07) 8px), #6e1f26",
   },
   royal: {
     background:
@@ -82,7 +85,7 @@ export default function PlayingCard({
   const backLabel = useContext(CardBackLabel);
   const interactive = Boolean(onClick) && !disabled;
 
-  const base = `${s.w} aspect-[2/3] ${s.radius} shrink-0 select-none transition-transform duration-150 ${className}`;
+  const base = `${s.w} aspect-[2/3] ${s.radius} card-edge shrink-0 select-none transition-transform duration-150 ${className}`;
   const ring = selected
     ? "ring-2 ring-gold -translate-y-2"
     : highlighted
