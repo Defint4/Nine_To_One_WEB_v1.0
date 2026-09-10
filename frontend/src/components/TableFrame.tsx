@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import FlightLayer from "@/components/FlightLayer";
+import FxLayer from "@/components/FxLayer";
 import { LoadingScreen } from "@/components/Loading";
 import SettingsSheet from "@/components/SettingsSheet";
 import { joinRoom } from "@/lib/api";
@@ -165,6 +166,7 @@ function Room<V extends BaseRoomView, S extends RoomSocket<V>>({
         <div className="min-h-0 flex-1">{table(socket, view)}</div>
       )}
 
+      <FxLayer />
       <FlightLayer />
 
       {settingsOpen && (

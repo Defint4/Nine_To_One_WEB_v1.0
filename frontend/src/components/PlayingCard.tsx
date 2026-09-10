@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { usePrefs, type BackStyle } from "@/lib/prefs";
 import type { CardT } from "@/lib/types";
 
@@ -132,39 +132,59 @@ export default function PlayingCard({
     );
   }
 
-  const red = card.suit === "hearts" || card.suit === "diamonds";
   return (
     <Wrapper interactive={interactive} onClick={onClick} disabled={disabled}>
-      <span
-        className={`${base} ${ring} block overflow-hidden bg-white shadow-card-flat`}
-      >
-        {/* Contexte de positionnement interne : le span externe garde la classe
-            de position (absolute…) que l'appelant lui donne. */}
-        <span className="relative block h-full w-full">
-          {/* Sous-couche : valeur + couleur, visibles le temps que l'image arrive.
-              Jamais de carte blanche, même sur un réseau lent. */}
-          <span
-            aria-hidden
-            className={`absolute left-[5px] top-[3px] leading-none ${s.idx} font-extrabold ${
-              red ? "text-card-red" : "text-ink"
-            }`}
-          >
-            {valueLabel(card.value)}
-            <span className="block">{SUIT_GLYPH[card.suit]}</span>
-          </span>
-          {/* Rendu à 200 % puis réduit de moitié : le SVG est rastérisé plus grand,
-              les contours restent nets même en petit et sous rotation. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={`/cards/${card.value}-${card.suit}.svg`}
-            alt={`${valueLabel(card.value)} ${card.suit}`}
-            className="relative block max-w-none origin-top-left scale-50"
-            style={{ width: "200%", height: "200%" }}
-            draggable={false}
-          />
-        </span>
+      {/* Le fond blanc arrondi est dessiné ici, pas dans le SVG (dont le cadre a été
+          retiré) : aucun rognage (`overflow: hidden`) n'est nécessaire, et c'est le
+          rognage d'un élément tourné qui crénelait les bords sur téléphone. Le fin
+          trait noir du SVG, sous le pixel une fois réduit, faisait un liseré gris. */}
+      <span className={`${base} ${ring} block bg-white shadow-card-flat`}>
+        <Face card={card} idx={s.idx} />
       </span>
     </Wrapper>
+  );
+}
+
+/* La face : l'image, et en dessous la valeur en texte le temps qu'elle arrive.
+   Jamais de carte blanche, même sur un réseau lent ; jamais de doublon non plus, le
+   texte s'efface dès que l'image est là (le SVG est transparent autour des motifs). */
+function Face({ card, idx }: { card: CardT; idx: string }) {
+  const ref = useRef<HTMLImageElement>(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    // Image déjà en cache (préchargée) : `onLoad` ne repassera pas.
+    const img = ref.current;
+    if (img?.complete && img.naturalWidth > 0) setLoaded(true);
+  }, []);
+  const red = card.suit === "hearts" || card.suit === "diamonds";
+  return (
+    // Contexte de positionnement interne : le span externe garde la classe de
+    // position (absolute…) que l'appelant lui donne.
+    <span className="relative block h-full w-full">
+      {!loaded && (
+        <span
+          aria-hidden
+          className={`absolute left-[5px] top-[3px] leading-none ${idx} font-extrabold ${
+            red ? "text-card-red" : "text-ink"
+          }`}
+        >
+          {valueLabel(card.value)}
+          <span className="block">{SUIT_GLYPH[card.suit]}</span>
+        </span>
+      )}
+      {/* Rendu à 200 % puis réduit de moitié : le SVG est rastérisé plus grand,
+          les contours restent nets même en petit et sous rotation. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={ref}
+        src={`/cards/${card.value}-${card.suit}.svg`}
+        alt={`${valueLabel(card.value)} ${card.suit}`}
+        onLoad={() => setLoaded(true)}
+        className="relative block max-w-none origin-top-left scale-50"
+        style={{ width: "200%", height: "200%" }}
+        draggable={false}
+      />
+    </span>
   );
 }
 

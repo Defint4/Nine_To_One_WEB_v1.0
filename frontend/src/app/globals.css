@@ -19,7 +19,9 @@
   --font-sans: var(--font-bricolage), system-ui, sans-serif;
 
   --shadow-card: 0 2px 0 rgba(0, 0, 0, 0.18), 0 8px 18px rgba(0, 0, 0, 0.28);
-  --shadow-card-flat: 0 1px 0 rgba(0, 0, 0, 0.15), 0 3px 8px rgba(0, 0, 0, 0.2);
+  /* Pas d'ombre dure décalée d'un pixel : sur une carte tournée elle fait un bord
+     sale d'un seul côté. Une ombre douce, symétrique, et une plus large pour le relief. */
+  --shadow-card-flat: 0 0 1px rgba(0, 0, 0, 0.35), 0 3px 8px rgba(0, 0, 0, 0.22);
 
   --animate-deal: deal 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

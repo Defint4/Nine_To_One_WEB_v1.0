@@ -1,8 +1,8 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useAnimate } from "motion/react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
 import FlipCard from "@/components/FlipCard";
 import PlayingCard from "@/components/PlayingCard";
@@ -13,13 +13,19 @@ import { SUIT_GLYPH, SUIT_LABEL, face } from "./cards";
 import { GAME } from "./meta";
 import type { GoulagSocket } from "./socket";
 import type { ActionKind, PlayerView, RoomView, SuitName } from "./types";
-import { useChoreography, type CenterFx, type SeatFx } from "./useChoreography";
+import {
+  useChoreography,
+  type CenterFx,
+  type SeatFx,
+  type StageFx,
+} from "./useChoreography";
 
 /* La table du Goulag, vue de ta place. Les adversaires sont assis autour d'un ovale
    dans l'ordre réel des tours (ton voisin de gauche joue après toi) ; chacun a son
-   tapis : deux vies posées à plat, le bouclier couché devant, les charges face cachée.
-   Le tapis est en vraie perspective ; les objets vivent dans leur propre petit
-   espace 3D (inclinaison, relief), ce qui garde les cartes nettes et tapables. */
+   tapis : le bouclier couché devant, deux vies posées à plat, les charges face cachée
+   à droite. Le tapis est en vraie perspective et les sièges du fond sont dessinés un
+   cran plus petits ; les objets posés restent en 2D (nets et tapables), la 3D est
+   réservée aux cartes qui bougent et à la scène du centre où tout se retourne. */
 
 export default function Table({
   socket,
@@ -38,7 +44,13 @@ export default function Table({
     (_, i) => view.players[(me + 1 + i) % n],
   );
   const yourTurn = view.turn === me && view.status === "playing";
-  const targeting = yourTurn && view.phase === "target";
+  // Les commandes suivent la vue vivante, pas la vue jouée : dès que le serveur a
+  // pris ton annonce ou ta cible, les boutons s'effacent, pendant que la table
+  // raconte encore le coup.
+  const liveTurn = live.turn === me && live.status === "playing";
+  const announcing = liveTurn && live.phase === "action";
+  const targeting =
+    yourTurn && view.phase === "target" && liveTurn && live.phase === "target";
   const canTarget = (p: PlayerView) =>
     targeting && p.alive && (view.pending_action === "defend" || p.seat !== me);
   const active =
@@ -53,8 +65,19 @@ export default function Table({
     setSuitPicked(false);
   }
 
+  // La table entière tremble à l'impact (sans remonter quoi que ce soit).
+  const [scope, animate] = useAnimate();
+  useEffect(() => {
+    if (!fx.tableShake) return;
+    animate(
+      scope.current,
+      { x: [0, -7, 6, -4, 3, -1, 0], y: [0, 3, -2, 2, -1, 0, 0] },
+      { duration: 0.42, ease: "easeOut" },
+    );
+  }, [fx.tableShake, animate, scope]);
+
   return (
-    <div className="relative flex h-full flex-col">
+    <div ref={scope} className="relative flex h-full flex-col">
       <Banner view={view} you={you} />
 
       {/* Le tapis et les adversaires */}
@@ -71,6 +94,7 @@ export default function Table({
             onTarget={() => socket.target(p.seat)}
           />
         ))}
+        <Stage stage={fx.center.stage} seats={n} />
         <Piles view={view} center={fx.center} />
       </div>
 
@@ -79,7 +103,8 @@ export default function Table({
         socket={socket}
         view={view}
         you={you}
-        yourTurn={yourTurn}
+        announcing={announcing}
+        targeting={targeting}
         targetable={canTarget(you)}
         active={active === me}
         fx={fx.seats[me]}
@@ -107,34 +132,38 @@ export default function Table({
    Des rangées explicites plutôt qu'une ellipse calculée : sur un téléphone, chaque
    tapis doit rester entier et ne jamais en chevaucher un autre. */
 const PLACES: Record<number, [number, number][]> = {
-  1: [[50, 16]],
+  1: [[50, 18]],
   2: [
-    [26, 22],
-    [74, 22],
+    [26, 24],
+    [74, 24],
   ],
   3: [
-    [27, 44],
-    [50, 12],
-    [73, 44],
+    [26, 46],
+    [50, 13],
+    [74, 46],
   ],
   4: [
-    [27, 56],
-    [28, 16],
-    [72, 16],
-    [73, 56],
+    [25, 58],
+    [27, 18],
+    [73, 18],
+    [75, 58],
   ],
   5: [
-    [27, 62],
-    [28, 32],
-    [50, 10],
-    [72, 32],
-    [73, 62],
+    [25, 64],
+    [27, 34],
+    [50, 11],
+    [73, 34],
+    [75, 64],
   ],
 };
 
-function seatPlacement(k: number, n: number): { left: string; top: string } {
+type Placement = { left: string; top: string; scale: number };
+
+function seatPlacement(k: number, n: number): Placement {
   const [x, y] = PLACES[n - 1][k - 1];
-  return { left: `${x}%`, top: `${y}%` };
+  // Le fond de la table est plus loin : un peu plus petit, comme sur le vrai tapis.
+  const scale = y <= 14 ? 0.86 : y <= 26 ? 0.9 : y <= 40 ? 0.94 : 1;
+  return { left: `${x}%`, top: `${y}%`, scale };
 }
 
 /* ----------------------------------------------------------------------- */
@@ -147,7 +176,7 @@ function Felt() {
       aria-hidden
       className="pointer-events-none absolute inset-0 overflow-hidden"
     >
-      <div className="absolute inset-x-[-14%] top-[2%] h-[118%] [perspective:900px] [perspective-origin:50%_30%]">
+      <div className="absolute inset-x-[-16%] top-[-14%] h-[132%] [perspective:900px] [perspective-origin:50%_30%]">
         {/* Le bord de bois, légèrement plus grand et plus bas : l'épaisseur de la table. */}
         <div
           className="absolute inset-0 rounded-[50%]"
@@ -186,7 +215,7 @@ function OpponentSeat({
   onTarget,
 }: {
   player: PlayerView;
-  place: { left: string; top: string };
+  place: Placement;
   active: boolean;
   targetable: boolean;
   fx?: SeatFx;
@@ -196,7 +225,7 @@ function OpponentSeat({
   return (
     <div
       className="absolute -translate-x-1/2 -translate-y-1/2"
-      style={{ left: place.left, top: place.top }}
+      style={{ left: place.left, top: place.top, scale: place.scale }}
     >
       <SeatEffects fx={fx}>
         <button
@@ -219,7 +248,9 @@ function OpponentSeat({
 }
 
 /* Ce qui arrive à un siège : secousse à l'impact, éclat (rouge, doré, vert, noir)
-   et un mot ou un chiffre qui monte (dégâts, bloqué, couleur choisie…). */
+   et un mot ou un chiffre qui claque (dégâts, bloqué, annonce, couleur choisie…).
+   La secousse est jouée sur l'élément en place : rien n'est remonté, les cartes et
+   les ancres restent là où elles sont. */
 function SeatEffects({
   fx,
   children,
@@ -227,57 +258,79 @@ function SeatEffects({
   fx?: SeatFx;
   children: React.ReactNode;
 }) {
+  const [scope, animate] = useAnimate();
+  const shake = fx?.shake ?? 0;
+  useEffect(() => {
+    if (!shake) return;
+    animate(
+      scope.current,
+      { x: [0, -9, 8, -6, 5, -2, 0], rotate: [0, -2.5, 2, -1.4, 0.8, 0] },
+      { duration: 0.46, ease: "easeOut" },
+    );
+  }, [shake, animate, scope]);
+
   const flashClass = {
-    hit: "ring-4 ring-card-red shadow-[0_0_40px_rgba(195,64,47,0.8)]",
-    block: "ring-4 ring-gold shadow-[0_0_36px_rgba(229,181,74,0.8)]",
-    heal: "ring-4 ring-felt-600 shadow-[0_0_36px_rgba(37,107,86,0.9)]",
-    death: "ring-4 ring-black shadow-[0_0_40px_rgba(0,0,0,0.9)]",
-  };
-  const popupClass = {
-    damage: "bg-card-red text-ivory",
-    block: "bg-gold text-ink",
-    info: "bg-ink text-ivory ring-1 ring-white/25",
+    hit: "ring-4 ring-card-red shadow-[0_0_44px_rgba(195,64,47,0.85)]",
+    block: "ring-4 ring-gold shadow-[0_0_40px_rgba(229,181,74,0.85)]",
+    heal: "ring-4 ring-felt-600 shadow-[0_0_40px_rgba(37,107,86,0.95)]",
+    death: "ring-4 ring-black shadow-[0_0_48px_rgba(0,0,0,0.95)]",
   };
   return (
-    <motion.div
-      key={fx?.shake ?? 0}
-      className="relative"
-      animate={
-        fx?.shake
-          ? { x: [0, -7, 7, -5, 5, -2, 0], rotate: [0, -2, 2, -1, 1, 0] }
-          : { x: 0, rotate: 0 }
-      }
-      transition={{ duration: 0.42 }}
-    >
+    <div ref={scope} className="relative">
       <AnimatePresence>
         {fx?.flash && (
           <motion.span
-            key={fx.flash}
+            key={fx.flash.id}
             aria-hidden
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.12 }}
-            className={`pointer-events-none absolute -inset-1 rounded-2xl ${flashClass[fx.flash]}`}
+            animate={{ opacity: [0, 1, 0.75] }}
+            exit={{ opacity: 0, transition: { duration: 0.35 } }}
+            transition={{ duration: 0.25 }}
+            className={`pointer-events-none absolute -inset-1 rounded-2xl ${flashClass[fx.flash.kind]}`}
           />
         )}
       </AnimatePresence>
       {children}
-      <AnimatePresence>
-        {fx?.popup && (
-          <motion.span
-            key={fx.popup.id}
-            initial={{ opacity: 0, y: 6, scale: 0.7 }}
-            animate={{ opacity: 1, y: -18, scale: 1 }}
-            exit={{ opacity: 0, y: -34 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className={`pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-0.5 text-lg font-extrabold shadow-card ${popupClass[fx.popup.tone]}`}
-          >
-            {fx.popup.text}
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      <Popup popup={fx?.popup ?? null} />
+    </div>
+  );
+}
+
+/* Le mot qui claque au-dessus d'un siège : il tombe et rebondit à l'impact, tient le
+   temps d'être lu, puis s'envole. */
+function Popup({ popup }: { popup: SeatFx["popup"] }) {
+  const toneClass = {
+    damage: "bg-card-red text-ivory ring-2 ring-white/30",
+    block: "bg-gold text-ink ring-2 ring-white/40",
+    info: "bg-ink text-ivory ring-1 ring-white/25",
+    attack: "bg-card-red text-ivory ring-2 ring-gold",
+    charge: "bg-ink text-gold ring-2 ring-gold/70",
+    defend: "bg-felt-600 text-ivory ring-2 ring-white/30",
+  };
+  return (
+    <AnimatePresence>
+      {popup && (
+        <motion.span
+          key={popup.id}
+          initial={{ opacity: 0, y: -26, scale: popup.big ? 1.6 : 0.7 }}
+          animate={{
+            opacity: 1,
+            y: popup.big ? -30 : -22,
+            scale: popup.big ? [1.6, 0.92, 1.08, 1] : 1,
+          }}
+          exit={{ opacity: 0, y: -60, transition: { duration: 0.35 } }}
+          transition={{
+            duration: popup.big ? 0.45 : 0.3,
+            ease: "easeOut",
+          }}
+          className={`pointer-events-none absolute left-1/2 top-1/2 z-40 -translate-x-1/2 whitespace-nowrap rounded-full px-3 font-extrabold shadow-card ${
+            popup.big ? "py-1 text-2xl" : "py-0.5 text-base"
+          } ${toneClass[popup.tone]}`}
+        >
+          {popup.text}
+        </motion.span>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -317,8 +370,8 @@ function SeatHeader({
   );
 }
 
-/* Le tapis d'un joueur : bouclier couché, deux vies, charges. Pas de rotation 3D
-   sur les cartes posées : sur téléphone le navigateur les rastérise alors en
+/* Le tapis d'un joueur : bouclier couché, deux vies, charges à droite. Pas de rotation
+   3D sur les cartes posées : sur téléphone le navigateur les rastérise alors en
    texture et elles deviennent floues. Le relief vient des ombres et des légers
    angles ; la 3D est réservée aux cartes qui bougent. */
 type MatSize = "ms" | "md";
@@ -367,34 +420,6 @@ function Mat({ player, size }: { player: PlayerView; size: MatSize }) {
         />
       )}
       <div className="relative">
-        {/* Les charges, glissées derrière les vies en haut à droite : le tapis reste
-            étroit, deux tapis tiennent côte à côte sur un téléphone. */}
-        <div
-          className="absolute -right-5 -top-5 z-0"
-          ref={registerAnchor(`charges-${player.seat}`)}
-          aria-label={
-            player.charges
-              ? `${player.charges} charge${player.charges > 1 ? "s" : ""}`
-              : undefined
-          }
-        >
-          {Array.from({ length: player.charges }, (_, i) => (
-            <span
-              key={i}
-              className={i === 0 ? "block" : "absolute left-0 top-0"}
-              style={{
-                transform: `translate(${i * 5}px, ${-i * 4}px) rotateZ(${i ? 14 : 8}deg)`,
-              }}
-            >
-              <PlayingCard faceDown size={size} />
-            </span>
-          ))}
-          {player.charges > 0 && (
-            <span className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-gold px-1.5 text-[11px] font-extrabold leading-4 tracking-wide text-ink ring-1 ring-black/30">
-              {player.charges === 1 ? "1 charge" : `${player.charges} charges`}
-            </span>
-          )}
-        </div>
         <div
           className="relative z-10 flex"
           ref={registerAnchor(`lives-${player.seat}`)}
@@ -411,6 +436,39 @@ function Mat({ player, size }: { player: PlayerView; size: MatSize }) {
           )}
         </div>
         <LifeBadge total={player.life_total} alive={player.alive} size={size} />
+      </div>
+      {/* Les charges, à droite des vies, un peu glissées dessous : le tapis ne
+          s'élargit que de ce qui dépasse. Sans charge, l'ancre reste là (cible du
+          vol quand on charge) sans prendre de place. */}
+      <div
+        className={`relative flex flex-col items-center ${
+          player.charges ? "-ml-2.5" : "w-0"
+        }`}
+        ref={registerAnchor(`charges-${player.seat}`)}
+        aria-label={
+          player.charges
+            ? `${player.charges} charge${player.charges > 1 ? "s" : ""}`
+            : undefined
+        }
+      >
+        {player.charges > 0 && (
+          <div className="relative">
+            {Array.from({ length: player.charges }, (_, i) => (
+              <span
+                key={i}
+                className={i === 0 ? "block" : "absolute left-0 top-0"}
+                style={{
+                  transform: `translate(${i * 5}px, ${-i * 4}px) rotateZ(${i ? 10 : 4}deg)`,
+                }}
+              >
+                <PlayingCard faceDown size={size} />
+              </span>
+            ))}
+            <span className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-gold px-1.5 text-[11px] font-extrabold leading-4 tracking-wide text-ink ring-1 ring-black/30">
+              {player.charges === 1 ? "1 charge" : `${player.charges} charges`}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -498,17 +556,106 @@ function LifeBadge({
 }
 
 /* ----------------------------------------------------------------------- */
+/* La scène : là où les cartes se retournent, au centre de la table            */
+/* ----------------------------------------------------------------------- */
+
+function Stage({ stage, seats }: { stage: StageFx | null; seats: number }) {
+  const glow = {
+    reveal: "shadow-[0_0_34px_rgba(255,255,255,0.4)]",
+    success: "shadow-[0_0_56px_rgba(229,181,74,1)] ring-4 ring-gold",
+    fail: "shadow-[0_0_44px_rgba(195,64,47,0.95)] ring-4 ring-card-red",
+  };
+  const captionClass = {
+    reveal: "bg-ink/85 text-ivory ring-1 ring-white/20",
+    success: "bg-gold text-ink ring-2 ring-white/40",
+    fail: "bg-card-red text-ivory ring-2 ring-white/30",
+  };
+  return (
+    // Sous la rangée d'adversaires la plus basse : au milieu du tapis à peu de joueurs,
+    // au-dessus des piles quand la table est pleine.
+    <div
+      className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
+      style={{ top: seats <= 3 ? "52%" : seats === 4 ? "69%" : "76%" }}
+    >
+      {/* L'ancre : une boîte fixe de la taille d'une grande carte, que la scène soit
+          vide ou pleine, pour que les vols visent toujours le même point. */}
+      <div
+        className="relative flex h-[6.75rem] w-[4.5rem] items-center justify-center"
+        ref={registerAnchor("stage")}
+      >
+        <AnimatePresence>
+          {stage?.spotlight && (
+            <motion.span
+              key="spot"
+              aria-hidden
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: [0.7, 1, 0.7], scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{
+                opacity: { repeat: Infinity, duration: 1.6 },
+                scale: { duration: 0.5 },
+              }}
+              className="absolute -inset-24 rounded-full bg-[radial-gradient(circle,rgba(255,244,214,0.38),rgba(255,244,214,0.12)_40%,transparent_68%)]"
+            />
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {stage && stage.cards.length > 0 && (
+            <motion.div
+              key={stage.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.15 } }}
+              transition={{ duration: 0.12 }}
+              className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2"
+            >
+              <div className="flex items-end justify-center gap-1.5">
+                {stage.cards.map((c, i) => (
+                  <motion.span
+                    key={`${c.value}-${c.suit}`}
+                    initial={{ x: i === 0 ? 0 : (i % 2 ? 1 : -1) * -30, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.05 * i, duration: 0.3 }}
+                    className={`block rounded-lg ${glow[stage.tone]}`}
+                  >
+                    <FlipCard
+                      card={c}
+                      size={i === 0 ? "lg" : "md"}
+                      delay={0.08 * i}
+                      duration={0.5}
+                    />
+                  </motion.span>
+                ))}
+              </div>
+              <AnimatePresence mode="wait">
+                {stage.caption && (
+                  <motion.p
+                    key={stage.caption}
+                    initial={{ opacity: 0, y: 6, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.22 }}
+                    className={`whitespace-nowrap rounded-full px-3 py-0.5 text-sm font-extrabold shadow-card ${captionClass[stage.tone]}`}
+                  >
+                    {stage.caption}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------- */
 /* Le centre : pioche et défausse                                             */
 /* ----------------------------------------------------------------------- */
 
 function Piles({ view, center }: { view: RoomView; center: CenterFx }) {
-  const glow = {
-    reveal: "shadow-[0_0_30px_rgba(255,255,255,0.35)]",
-    success: "shadow-[0_0_50px_rgba(229,181,74,0.95)] ring-4 ring-gold",
-    fail: "shadow-[0_0_40px_rgba(195,64,47,0.9)] ring-4 ring-card-red",
-  };
   return (
-    <div className="pointer-events-none absolute left-1/2 top-[84%] flex -translate-x-1/2 -translate-y-1/2 items-end gap-5 [perspective:600px]">
+    <div className="pointer-events-none absolute left-1/2 top-[84%] flex -translate-x-1/2 -translate-y-1/2 items-end gap-5">
       <div className="relative flex flex-col items-center">
         <div
           className="relative h-[4.125rem] w-11"
@@ -521,32 +668,15 @@ function Piles({ view, center }: { view: RoomView; center: CenterFx }) {
               animate={{
                 // La coupe : la moitié du dessus glisse sur le côté, le temps de prendre
                 // la carte du milieu.
-                x: center.split && i < 1 ? 30 : 0,
-                y: -i * 2 + (center.split && i < 1 ? -8 : 0),
+                x: center.split && i < 1 ? 34 : 0,
+                y: -i * 2 + (center.split && i < 1 ? -10 : 0),
+                rotate: center.split && i < 1 ? 8 : 0,
               }}
               transition={{ type: "spring", stiffness: 300, damping: 24 }}
             >
               <PlayingCard faceDown size="ms" />
             </motion.span>
           ))}
-          <AnimatePresence>
-            {center.card && (
-              <motion.span
-                key={`${center.card.value}-${center.card.suit}`}
-                initial={{ opacity: 0, y: 0, scale: 0.6 }}
-                animate={{ opacity: 1, y: -70, scale: 1 }}
-                exit={{
-                  opacity: 0,
-                  scale: 0.8,
-                  transition: { duration: 0.15 },
-                }}
-                transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                className={`absolute left-1/2 top-0 z-20 -translate-x-1/2 rounded-lg ${glow[center.tone]}`}
-              >
-                <FlipCard card={center.card} size="lg" duration={0.55} />
-              </motion.span>
-            )}
-          </AnimatePresence>
         </div>
         <span className="mt-1 text-[10px] font-semibold text-ivory-dim/70">
           {view.draw_count}
@@ -624,7 +754,8 @@ function YourZone({
   socket,
   view,
   you,
-  yourTurn,
+  announcing,
+  targeting,
   targetable,
   active,
   fx,
@@ -632,12 +763,12 @@ function YourZone({
   socket: GoulagSocket;
   view: RoomView;
   you: PlayerView;
-  yourTurn: boolean;
+  announcing: boolean;
+  targeting: boolean;
   targetable: boolean;
   active: boolean;
   fx?: SeatFx;
 }) {
-  const announcing = yourTurn && view.phase === "action";
   return (
     <div className="relative z-10 flex flex-col gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
       <div className="flex items-end justify-between gap-3">
@@ -699,7 +830,7 @@ function YourZone({
                 Attaque
               </ActionButton>
             </motion.div>
-          ) : yourTurn && view.phase === "target" ? (
+          ) : targeting ? (
             <motion.div
               key="target"
               initial={{ opacity: 0, y: 10 }}
@@ -806,19 +937,28 @@ function Results({ view, socket }: { view: RoomView; socket: GoulagSocket }) {
   const winner = ranked[0];
   const won = winner.seat === view.your_seat;
   return (
-    <div className="absolute inset-0 z-40 flex items-center justify-center bg-felt-900/80 px-6 backdrop-blur-sm">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="absolute inset-0 z-40 flex items-center justify-center bg-felt-900/80 px-6 backdrop-blur-sm"
+    >
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, scale: 0.86, y: 24 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 22, delay: 0.15 }}
         className="flex w-full max-w-sm flex-col gap-3 rounded-3xl bg-felt-800 p-5 ring-1 ring-white/10"
       >
         <h2 className="text-center text-2xl font-extrabold">
           {won ? "Dernier debout." : `${winner.pseudo} survit.`}
         </h2>
         <ol className="flex flex-col gap-1">
-          {ranked.map((p) => (
-            <li
+          {ranked.map((p, i) => (
+            <motion.li
               key={p.seat}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.35 + i * 0.08 }}
               className="flex items-center gap-2 rounded-xl bg-black/25 p-2"
             >
               <span className="w-5 text-center text-sm font-extrabold text-gold">
@@ -826,7 +966,7 @@ function Results({ view, socket }: { view: RoomView; socket: GoulagSocket }) {
               </span>
               <Avatar id={p.avatar} size="sm" />
               <span className="font-bold">{p.pseudo}</span>
-            </li>
+            </motion.li>
           ))}
         </ol>
         <button
@@ -843,6 +983,6 @@ function Results({ view, socket }: { view: RoomView; socket: GoulagSocket }) {
           Retour à l&rsquo;accueil
         </Link>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
