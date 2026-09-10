@@ -8,7 +8,7 @@ import { sfx, vibrate } from "@/lib/sound";
 import type { CardT, GameEvent } from "@/lib/types";
 import { SUIT_GLYPH, face } from "./cards";
 import type { GoulagSocket } from "./socket";
-import type { RoomView } from "./types";
+import type { PlayerView, RoomView } from "./types";
 
 /* La chorégraphie de la table : les événements du serveur sont rejoués dans l'ordre,
    avec des vols de cartes entre les ancres (pioche, défausse, scène, bouclier, vies,
@@ -191,6 +191,21 @@ export function useChoreography(
     setShown(next);
   }, []);
 
+  /* Retouche la vue affichée en cours de séquence : la carte qui vient de se poser
+     remplace tout de suite celle du tapis, sans attendre la fin de l'histoire. */
+  const patchShown = useCallback(
+    (seat: number, patch: Partial<PlayerView>) => {
+      const current = shownRef.current;
+      commit({
+        ...current,
+        players: current.players.map((p) =>
+          p.seat === seat ? { ...p, ...patch } : p,
+        ),
+      });
+    },
+    [commit],
+  );
+
   /* Une vue sans événement (reconnexion, arrivée d'un joueur) : on l'applique tout de
      suite si rien ne joue, sinon elle sera rattrapée à la fin de la séquence. */
   useEffect(() => {
@@ -253,6 +268,9 @@ export function useChoreography(
     ) {
       const me = before.your_seat;
       const name = (seat: number) => before.players[seat]?.pseudo ?? "";
+      const seatNow = (seat: number) => shownRef.current.players[seat];
+      // Les boucliers déjà remplacés sur le tapis pendant la révélation.
+      const shieldDone = new Set<number>();
       // Les cartes volent à la taille de leur destination : petites vers un adversaire.
       const sizeFor = (seat: number): "ms" | "md" =>
         seat === me ? "md" : "ms";
@@ -281,7 +299,9 @@ export function useChoreography(
             const seat = e.player as number;
             sfx.pickup();
             fly("deck", `charges-${seat}`, null, { size: sizeFor(seat) });
-            await wait(T.fly + 150);
+            await wait(T.fly - 40);
+            patchShown(seat, { charges: (seatNow(seat)?.charges ?? 0) + 1 });
+            await wait(190);
             break;
           }
           case "revealed": {
@@ -351,6 +371,20 @@ export function useChoreography(
                 spin: attack ? 16 : 6,
               }),
             );
+            if (!attack) {
+              // L'ancien bouclier s'en va quand le nouveau arrive, et à l'atterrissage
+              // le tapis montre déjà la nouvelle carte : rien ne traîne.
+              const old = seatNow(target)?.defense ?? null;
+              if (old) {
+                fly(`shield-${target}`, "discard", face(old), {
+                  delay: 0.25,
+                  spin: -14,
+                });
+              }
+              const raw = e.card as CardT;
+              setTimeout(() => patchShown(target, { defense: raw }), T.fly - 40);
+              shieldDone.add(target);
+            }
             if (attack) {
               tracer("stage", `lives-${target}`, {
                 duration: T.fly / 1000,
@@ -425,41 +459,54 @@ export function useChoreography(
           }
           case "charges_lost": {
             const seat = e.player as number;
-            const count = before.players[seat]?.charges ?? 0;
+            const count = seatNow(seat)?.charges ?? 0;
             if (count) {
               sfx.pickup();
               popup(seat, "Charges perdues", "info", 1200);
               for (let i = 0; i < count; i++) {
                 fly(`charges-${seat}`, "discard", null, { delay: i * 0.1 });
               }
-              await wait(T.fly + 100 * count);
+              await wait(T.fly * 0.5 + 100 * count);
+              patchShown(seat, { charges: 0 });
+              await wait(T.fly * 0.5);
             }
             break;
           }
           case "lives_updated": {
             const seat = e.player as number;
-            const removed = (e.removed as CardT[]).map(face);
-            const added = (e.added as CardT[]).map(face);
-            // D'abord ce qui part, puis ce qui vient : la recomposition se lit.
-            if (removed.length) {
+            const removedRaw = e.removed as CardT[];
+            const addedRaw = e.added as CardT[];
+            const same = (a: CardT, b: CardT) =>
+              a.suit === b.suit && face(a).value === face(b).value;
+            const total = (cards: CardT[]) =>
+              cards.reduce((sum, c) => sum + c.value, 0);
+            // D'abord ce qui part, puis ce qui vient : la recomposition se lit, et le
+            // tapis suit chaque carte au moment où elle décolle ou se pose.
+            if (removedRaw.length) {
               sfx.play();
-              removed.forEach((c, i) =>
-                fly(`lives-${seat}`, "discard", c, { delay: i * 0.1 }),
+              removedRaw.forEach((c, i) =>
+                fly(`lives-${seat}`, "discard", face(c), { delay: i * 0.1 }),
               );
-              await wait(T.fly + 100 * (removed.length - 1) + 120);
+              await wait(160);
+              const remaining = (seatNow(seat)?.lives ?? []).filter(
+                (c) => !removedRaw.some((r) => same(r, c)),
+              );
+              patchShown(seat, { lives: remaining, life_total: total(remaining) });
+              await wait(T.fly + 100 * (removedRaw.length - 1) - 40);
             }
-            if (added.length) {
+            if (addedRaw.length) {
               sfx.pickup();
-              added.forEach((c, i) =>
-                fly("discard", `lives-${seat}`, c, {
+              addedRaw.forEach((c, i) =>
+                fly("discard", `lives-${seat}`, face(c), {
                   size: sizeFor(seat),
                   delay: i * 0.1,
                 }),
               );
-              await wait(T.fly + 100 * (added.length - 1));
+              await wait(T.fly + 100 * (addedRaw.length - 1) - 40);
+              const lives = [...(seatNow(seat)?.lives ?? []), ...addedRaw];
+              patchShown(seat, { lives, life_total: total(lives) });
               sfx.play();
-              const total = after.players[seat]?.life_total;
-              if (total !== undefined) popup(seat, `Vies : ${total}`, "info", 1300);
+              popup(seat, `Vies : ${total(lives)}`, "info", 1300);
               await wait(500);
             }
             break;
@@ -468,9 +515,13 @@ export function useChoreography(
             const target = e.target as number;
             const old = e.old as CardT | null;
             const value = (e.card as CardT).value;
-            if (old) {
-              fly(`shield-${target}`, "discard", face(old), { spin: -14 });
-              await wait(T.fly * 0.6);
+            if (!shieldDone.has(target)) {
+              // Sans révélation juste avant (cas théorique) : on fait l'échange ici.
+              if (old) {
+                fly(`shield-${target}`, "discard", face(old), { spin: -14 });
+                await wait(T.fly * 0.6);
+              }
+              patchShown(target, { defense: e.card as CardT });
             }
             sfx.play();
             flash(target, "heal", 700);
@@ -489,7 +540,8 @@ export function useChoreography(
           }
           case "died": {
             const seat = e.player as number;
-            const lives = (before.players[seat]?.lives ?? []).map(face);
+            const livesRaw = seatNow(seat)?.lives ?? [];
+            const lives = livesRaw.map(face);
             sfx.thud();
             vibrate([60, 40, 80]);
             shakeTable();
@@ -514,7 +566,9 @@ export function useChoreography(
                 spin: -20,
               }),
             );
-            await wait(T.fly + 150 * lives.length + 400);
+            await wait(160);
+            patchShown(seat, { lives: [], life_total: 0 });
+            await wait(T.fly + 150 * lives.length + 240);
             break;
           }
           case "suit_chosen": {
@@ -585,7 +639,12 @@ export function useChoreography(
               size: success ? sizeFor(seat) : "ms",
               spin: success ? 6 : -18,
             });
-            await wait(T.fly + 100);
+            await wait(T.fly - 40);
+            if (success) {
+              const raw = e.card as CardT;
+              patchShown(seat, { lives: [raw], life_total: raw.value });
+            }
+            await wait(140);
             break;
           }
           case "revived": {
@@ -616,8 +675,11 @@ export function useChoreography(
             if (defense) {
               // Son bouclier retourne en jeu : il glisse à la défausse.
               fly(`shield-${seat}`, "discard", face(defense), { spin: -12 });
-              await wait(T.fly);
+              await wait(160);
+              patchShown(seat, { defense: null });
+              await wait(T.fly - 160);
             }
+            patchShown(seat, { alive: false });
             await wait(500);
             break;
           }
@@ -658,7 +720,7 @@ export function useChoreography(
         }
       }
     }
-  }, [onEvents, commit, flash, popup, center, stage, shakeTable]);
+  }, [onEvents, commit, patchShown, flash, popup, center, stage, shakeTable]);
 
   return { shown, fx };
 }

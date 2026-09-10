@@ -128,10 +128,10 @@ SEARCH_POOL = ThreadPoolExecutor(max_workers=settings.bot_threads, thread_name_p
 
 def add_bot(room: Room, difficulty: str) -> Seat:
     """Assoit un bot en lobby (lève GameError si la table est pleine)."""
-    n = 1
-    while any(s.pseudo.endswith(f"_bot_{n}") for s in room.seats):
-        n += 1
-    pseudo = f"{random.choice(FIRST_NAMES)}_bot_{n}"
+    # « Olga bot » : un prénom encore libre à cette table, sans numéro.
+    taken = {s.pseudo for s in room.seats}
+    free = [name for name in FIRST_NAMES if f"{name} bot" not in taken]
+    pseudo = f"{random.choice(free)} bot" if free else f"Bot {len(room.seats) + 1}"
     add_player(room.state, pseudo)
     seat = Seat(
         player_id=uuid.uuid4(),

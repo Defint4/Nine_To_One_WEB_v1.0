@@ -73,9 +73,9 @@ frontend/src/games/goulag/
   Home.tsx, TablePage.tsx   accueil et cadre de table communs (GameHome, TableFrame, Lobby)
   Table.tsx                 la table : tapis en perspective, sièges, scène centrale, actions, fin de partie
   useChoreography.tsx       rejoue les événements : vols de cartes, scène, impacts, effets d'écran, sons
-frontend/src/components/FxLayer.tsx   particules, traînées de tir, ondes de choc et voiles d'écran (commun)
   socket.ts, types.ts       actions et vue du jeu
 frontend/src/app/goulag/        routes : /goulag, /goulag/table/[code]
+frontend/src/components/FxLayer.tsx   particules, traînées de tir, ondes de choc, voiles d'écran (commun)
 ```
 
 ## Actions WebSocket du jeu
@@ -108,6 +108,6 @@ charges, total, défense, dégâts), `charges_lost`,
 | Niveau | Politique |
 |---|---|
 | Facile | action, cible et couleur au hasard |
-| Normal | répare une défense faible, charge un peu puis frappe ; vise une cible qu'il peut tuer, sinon celle qui encaisse le plus ; garde une bonne carte pour sa défense et impose les mauvaises à la défense la plus solide en face ; choisit la couleur la moins visible sur la table |
+| Normal | répare une défense faible, charge un peu puis frappe ; vise une cible qu'il peut tuer, sinon celle qui encaisse le plus ; garde une bonne carte pour sa défense et impose les mauvaises à la défense la plus solide en face ; couleur de résurrection au hasard (compter les couleurs visibles serait un avantage déloyal) |
 
 Les bots décident depuis la vue de leur siège : ils ne voient ni les charges ni la pioche.

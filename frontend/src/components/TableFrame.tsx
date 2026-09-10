@@ -135,11 +135,13 @@ function Room<V extends BaseRoomView, S extends RoomSocket<V>>({
   }, [rematchCode, router, game.slug]);
 
   const finished = socket.view?.status === "finished";
+  const closed = socket.closedReason !== null;
   useEffect(() => {
-    // Partie terminée : plus rien à reprendre depuis l'accueil (la revanche est une
-    // nouvelle table, mémorisée à son tour).
-    if (finished) forgetTable(game.slug);
-  }, [finished, game.slug]);
+    // Partie terminée, ou table fermée pour de bon (disparue, siège perdu) : plus rien
+    // à reprendre depuis l'accueil (la revanche est une nouvelle table, mémorisée à
+    // son tour).
+    if (finished || closed) forgetTable(game.slug);
+  }, [finished, closed, game.slug]);
 
   if (socket.closedReason)
     return <Blocked game={game} message={socket.closedReason} />;

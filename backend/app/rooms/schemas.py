@@ -12,6 +12,14 @@ class RoomOut(BaseModel):
     game: str
 
 
+class RoomStatusOut(RoomOut):
+    """Ce qu'il faut pour savoir si une table se reprend : son état, et si le joueur y
+    est encore assis."""
+
+    status: str
+    seated: bool
+
+
 def open_room_summary(room: Room) -> dict:
     """Résumé public d'un lobby rejoignable (liste des tables)."""
     return {

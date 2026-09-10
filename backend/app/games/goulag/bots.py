@@ -83,10 +83,10 @@ LOBBY_DELAY = 0.8
 
 def add_bot(room: Room, difficulty: str) -> Seat:
     """Assoit un bot en lobby (lève GameError si la table est pleine)."""
-    n = 1
-    while any(s.pseudo.endswith(f"_bot_{n}") for s in room.seats):
-        n += 1
-    pseudo = f"{random.choice(FIRST_NAMES)}_bot_{n}"
+    # « Olga bot » : un prénom encore libre à cette table, sans numéro.
+    taken = {s.pseudo for s in room.seats}
+    free = [name for name in FIRST_NAMES if f"{name} bot" not in taken]
+    pseudo = f"{random.choice(free)} bot" if free else f"Bot {len(room.seats) + 1}"
     add_player(room.state, pseudo)
     seat = Seat(
         player_id=uuid.uuid4(),
@@ -158,18 +158,10 @@ def _sturdiest(view: dict, seats: list[int]) -> int:
 
 
 def _choose_suit(view: dict, difficulty: str) -> Suit:
-    if difficulty == "easy":
-        return random.choice(list(Suit))
-    # La couleur la moins visible sur la table est la plus présente dans la pioche.
-    seen: dict[str, int] = {s.value: 0 for s in Suit}
-    for p in view["players"]:
-        for c in p["lives"]:
-            seen[c["suit"]] += 1
-        if p["defense"]:
-            seen[p["defense"]["suit"]] += 1
-    if view["discard_top"]:
-        seen[view["discard_top"]["suit"]] += 1
-    return Suit(min(seen, key=lambda s: seen[s]))
+    # Au hasard, quel que soit le niveau : compter les couleurs visibles sur la table
+    # donnait au bot un avantage à la résurrection que Matthieu juge déloyal.
+    del view, difficulty
+    return random.choice(list(Suit))
 
 
 # ---------------------------------------------------------------------------

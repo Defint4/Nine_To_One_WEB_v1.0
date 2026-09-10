@@ -29,7 +29,7 @@ from app.players.dependencies import get_current_player
 from app.players.models import Player
 from app.rooms import lobby
 from app.rooms.manager import Room, Seat, manager
-from app.rooms.schemas import CreateRoomRequest, RoomOut, open_room_summary
+from app.rooms.schemas import CreateRoomRequest, RoomOut, RoomStatusOut, open_room_summary
 from app.rooms.views import room_view
 
 logger = logging.getLogger(__name__)
@@ -84,6 +84,22 @@ async def join_room(
         await _broadcast_state(room, [{"type": "player_joined", "pseudo": player.pseudo}])
         await lobby.notify(room.game)
     return RoomOut(code=room.code, game=room.game)
+
+
+@router.get("/{code}", response_model=RoomStatusOut)
+async def room_status(code: str, player: Player = Depends(get_current_player)) -> RoomStatusOut:
+    """Une table existe-t-elle encore, et le joueur y a-t-il sa place ? L'accueil s'en
+    sert avant de proposer « Reprendre » : une table fantôme supprimée ne doit pas
+    rester en bouton."""
+    room = manager.get(code)
+    if room is None:
+        raise HTTPException(status_code=404, detail="Partie introuvable.")
+    return RoomStatusOut(
+        code=room.code,
+        game=room.game,
+        status=room.status.value,
+        seated=room.seat_of(player.id) is not None,
+    )
 
 
 @router.get("")

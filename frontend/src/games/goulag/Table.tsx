@@ -47,8 +47,11 @@ export default function Table({
   // Les commandes suivent la vue vivante, pas la vue jouée : dès que le serveur a
   // pris ton annonce ou ta cible, les boutons s'effacent, pendant que la table
   // raconte encore le coup.
+  // Et elles n'apparaissent que lorsque la table a fini de raconter le coup d'avant :
+  // tant que la vue jouée n'est pas à ton tour, rien ne s'affiche.
   const liveTurn = live.turn === me && live.status === "playing";
-  const announcing = liveTurn && live.phase === "action";
+  const announcing =
+    yourTurn && view.phase === "action" && liveTurn && live.phase === "action";
   const targeting =
     yourTurn && view.phase === "target" && liveTurn && live.phase === "target";
   const canTarget = (p: PlayerView) =>
@@ -186,13 +189,14 @@ function Felt() {
             boxShadow: "0 30px 60px rgba(0,0,0,0.55)",
           }}
         />
-        {/* Le feutre. */}
+        {/* Le feutre : une teinte unie qui s'assombrit vers le bord. Pas de tache de
+            lumière au centre, elle ressemblait à un éclair permanent au milieu de la table. */}
         <div
           className="absolute inset-[3%] rounded-[50%]"
           style={{
             transform: "rotateX(42deg)",
             background:
-              "radial-gradient(60% 55% at 50% 42%, #2b7a62 0%, #1b5443 55%, #123b2f 100%)",
+              "radial-gradient(70% 70% at 50% 50%, #1f5d4a 0%, #1b5443 60%, #143f32 100%)",
             boxShadow:
               "inset 0 0 0 6px rgba(0,0,0,0.25), inset 0 0 80px rgba(0,0,0,0.35), inset 0 -20px 40px rgba(0,0,0,0.25)",
           }}
@@ -560,8 +564,9 @@ function LifeBadge({
 /* ----------------------------------------------------------------------- */
 
 function Stage({ stage, seats }: { stage: StageFx | null; seats: number }) {
+  // Une carte qui flotte au-dessus du tapis porte une ombre, pas un halo blanc.
   const glow = {
-    reveal: "shadow-[0_0_34px_rgba(255,255,255,0.4)]",
+    reveal: "shadow-[0_14px_28px_rgba(0,0,0,0.55)]",
     success: "shadow-[0_0_56px_rgba(229,181,74,1)] ring-4 ring-gold",
     fail: "shadow-[0_0_44px_rgba(195,64,47,0.95)] ring-4 ring-card-red",
   };
@@ -803,21 +808,27 @@ function YourZone({
               className="flex items-stretch gap-2"
             >
               {view.peek && (
-                <div className="flex flex-col items-center justify-center rounded-2xl bg-black/30 px-2 ring-1 ring-gold/40">
-                  <span className="mb-1 text-[10px] font-bold text-gold">
-                    Tu vois
+                // L'œil de faucon : la carte à sa vraie taille, jamais écrasée par les
+                // boutons (qui se resserrent pour lui laisser la place).
+                <div className="flex shrink-0 items-center gap-2 rounded-2xl bg-black/30 px-2.5 ring-1 ring-gold/40">
+                  <span className="text-[10px] font-bold leading-tight text-gold">
+                    Tu
+                    <br />
+                    vois
                   </span>
                   <PlayingCard card={face(view.peek)} size="ms" />
                 </div>
               )}
               <ActionButton
                 kind="defend"
+                compact={Boolean(view.peek)}
                 onClick={() => socket.announce("defend")}
               >
                 Défense
               </ActionButton>
               <ActionButton
                 kind="charge"
+                compact={Boolean(view.peek)}
                 disabled={!view.can_charge}
                 onClick={() => socket.announce("charge")}
               >
@@ -825,6 +836,7 @@ function YourZone({
               </ActionButton>
               <ActionButton
                 kind="attack"
+                compact={Boolean(view.peek)}
                 onClick={() => socket.announce("attack")}
               >
                 Attaque
@@ -864,11 +876,13 @@ function YourZone({
 
 function ActionButton({
   kind,
+  compact,
   disabled,
   onClick,
   children,
 }: {
   kind: ActionKind;
+  compact?: boolean;
   disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
@@ -883,7 +897,9 @@ function ActionButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex-1 rounded-2xl py-4 text-base font-extrabold shadow-card enabled:active:translate-y-0.5 disabled:opacity-40 ${tone}`}
+      className={`min-w-0 flex-1 rounded-2xl font-extrabold shadow-card enabled:active:translate-y-0.5 disabled:opacity-40 ${
+        compact ? "px-1 py-3.5 text-sm" : "py-3.5 text-base"
+      } ${tone}`}
     >
       {children}
     </button>

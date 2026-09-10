@@ -66,6 +66,17 @@ export function createRoom(token: string, game: string) {
   });
 }
 
+export type RoomStatus = RoomRef & {
+  status: "lobby" | "playing" | "finished";
+  seated: boolean;
+};
+
+/* L'état d'une table (404 si elle n'existe plus) : sert à vérifier qu'une partie
+   mémorisée se reprend vraiment avant de le proposer. */
+export function fetchRoom(token: string, code: string) {
+  return request<RoomStatus>(`/api/rooms/${code}`, { headers: authed(token) });
+}
+
 export function joinRoom(token: string, code: string) {
   return request<RoomRef>(`/api/rooms/${code}/join`, {
     method: "POST",

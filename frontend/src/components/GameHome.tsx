@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
 import { TransitionOverlay } from "@/components/Loading";
-import { ApiError, createRoom, fetchMe, joinRoom } from "@/lib/api";
+import { ApiError, createRoom, fetchMe, fetchRoom, joinRoom } from "@/lib/api";
 import { HUB_PATH, tablePath, type GameMeta } from "@/lib/games";
 import { currentProfile, forgetTable, lastTable, type StoredProfile } from "@/lib/identity";
 import { preloadCards } from "@/lib/preloadCards";
@@ -63,6 +63,32 @@ function Tables({ game, profile }: { game: GameMeta; profile: StoredProfile }) {
     setResumeCode(lastTable(game.slug));
   }, [game.slug]);
 
+  // La table mémorisée existe-t-elle encore ? Une table fantôme est supprimée côté
+  // serveur après un quart d'heure sans personne : le bouton ne s'affiche qu'une fois
+  // la reprise confirmée, et la mémoire s'efface sinon.
+  const remembered = useQuery({
+    queryKey: ["room", resumeCode, profile.pseudo],
+    queryFn: () => fetchRoom(profile.token, resumeCode!),
+    enabled: resumeCode !== null,
+    retry: false,
+    staleTime: 0,
+  });
+  const resumable =
+    remembered.data !== undefined &&
+    remembered.data.status !== "finished" &&
+    (remembered.data.seated || remembered.data.status === "lobby");
+  useEffect(() => {
+    if (resumeCode === null) return;
+    const gone =
+      (remembered.error instanceof ApiError && remembered.error.status === 404) ||
+      (remembered.data !== undefined && !resumable);
+    if (gone) {
+      forgetTable(game.slug);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResumeCode(null);
+    }
+  }, [resumeCode, remembered.error, remembered.data, resumable, game.slug]);
+
   const me = useQuery({ queryKey: ["me", profile.pseudo], queryFn: () => fetchMe(profile.token) });
   const rooms = useOpenRooms(game.slug);
   const stats = me.data?.stats[game.slug] ?? NO_STATS;
@@ -94,11 +120,16 @@ function Tables({ game, profile }: { game: GameMeta; profile: StoredProfile }) {
     mutationFn: (code: string) => joinRoom(profile.token, code),
     onMutate: (code) => setLeaving(`Retour à la table ${code}…`),
     onSuccess: goToTable,
-    onError: () => {
-      // La partie n'existe plus : on oublie sans faire de bruit.
+    onError: (e) => {
       setLeaving(null);
-      forgetTable(game.slug);
-      setResumeCode(null);
+      if (e instanceof ApiError) {
+        // La partie n'existe plus, ou n'est plus rejoignable : on oublie sans bruit.
+        forgetTable(game.slug);
+        setResumeCode(null);
+      } else {
+        // Réseau ou serveur muet : la table existe peut-être encore, on la garde.
+        setError("Le serveur est injoignable.");
+      }
     },
   });
   const busy = leaving !== null;
@@ -118,7 +149,7 @@ function Tables({ game, profile }: { game: GameMeta; profile: StoredProfile }) {
         </div>
       </div>
 
-      {resumeCode && (
+      {resumeCode && resumable && (
         <button
           type="button"
           onClick={() => resume.mutate(resumeCode)}
