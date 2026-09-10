@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
-import { ApiError, createRoom, fetchMe, joinRoom, listRooms } from "@/lib/api";
+import { TransitionOverlay } from "@/components/Loading";
+import { ApiError, createRoom, fetchMe, joinRoom } from "@/lib/api";
 import { HUB_PATH, tablePath } from "@/lib/games";
 import { currentProfile, forgetTable, lastTable, type StoredProfile } from "@/lib/identity";
 import { preloadCards } from "@/lib/preloadCards";
 import { NO_STATS } from "@/lib/types";
+import { useOpenRooms } from "@/lib/useOpenRooms";
 import { GAME } from "./meta";
 import Wordmark from "./Wordmark";
 
@@ -53,42 +55,57 @@ function Lobby({ profile }: { profile: StoredProfile }) {
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [resumeCode, setResumeCode] = useState<string | null>(null);
+  // Le voile de transition : posé dès le tap, retiré seulement en cas d'erreur
+  // (en cas de succès on quitte l'écran, le voile reste jusqu'au changement de page).
+  const [leaving, setLeaving] = useState<string | null>(null);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setResumeCode(lastTable(GAME.slug));
   }, []);
 
   const me = useQuery({ queryKey: ["me", profile.pseudo], queryFn: () => fetchMe(profile.token) });
-  const rooms = useQuery({
-    queryKey: ["rooms", GAME.slug],
-    queryFn: () => listRooms(GAME.slug),
-    refetchInterval: 4000,
-  });
+  const rooms = useOpenRooms(GAME.slug);
   const stats = me.data?.stats[GAME.slug] ?? NO_STATS;
 
   const goToTable = ({ code }: { code: string }) => router.push(tablePath(GAME.slug, code));
+  const fail = (e: unknown) => {
+    setLeaving(null);
+    setError(e instanceof ApiError ? e.message : "Le serveur est injoignable.");
+  };
   const create = useMutation({
     mutationFn: () => createRoom(profile.token, GAME.slug),
+    onMutate: () => {
+      setError(null);
+      setLeaving("Ouverture de ta table…");
+    },
     onSuccess: goToTable,
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Le serveur est injoignable."),
+    onError: fail,
   });
   const join = useMutation({
     mutationFn: (code: string) => joinRoom(profile.token, code),
+    onMutate: (code) => {
+      setError(null);
+      setLeaving(`On te fait une place à la table ${code}…`);
+    },
     onSuccess: goToTable,
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Le serveur est injoignable."),
+    onError: fail,
   });
   const resume = useMutation({
     mutationFn: (code: string) => joinRoom(profile.token, code),
+    onMutate: (code) => setLeaving(`Retour à la table ${code}…`),
     onSuccess: goToTable,
     onError: () => {
       // La partie n'existe plus : on oublie sans faire de bruit.
+      setLeaving(null);
       forgetTable(GAME.slug);
       setResumeCode(null);
     },
   });
+  const busy = leaving !== null;
 
   return (
     <section className="flex grow flex-col gap-6">
+      <TransitionOverlay label={leaving} />
       <div className="flex items-center gap-3 rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
         <Avatar id={profile.avatar} size="lg" />
         <div className="grow">
@@ -105,7 +122,7 @@ function Lobby({ profile }: { profile: StoredProfile }) {
         <button
           type="button"
           onClick={() => resume.mutate(resumeCode)}
-          disabled={resume.isPending}
+          disabled={busy}
           className="flex items-center justify-between rounded-2xl bg-felt-600 px-5 py-4 ring-1 ring-gold/50 enabled:active:translate-y-0.5"
         >
           <span className="font-extrabold">Reprendre la table {resumeCode}</span>
@@ -116,7 +133,7 @@ function Lobby({ profile }: { profile: StoredProfile }) {
       <button
         type="button"
         onClick={() => create.mutate()}
-        disabled={create.isPending}
+        disabled={busy}
         className="rounded-2xl bg-gold py-5 text-xl font-extrabold text-ink shadow-card enabled:active:translate-y-0.5 disabled:opacity-40"
       >
         Créer une table
@@ -138,7 +155,7 @@ function Lobby({ profile }: { profile: StoredProfile }) {
         />
         <button
           type="submit"
-          disabled={joinCode.length !== 4 || join.isPending}
+          disabled={joinCode.length !== 4 || busy}
           className="rounded-xl bg-felt-600 px-5 font-bold ring-1 ring-white/15 enabled:active:translate-y-0.5 disabled:opacity-40"
         >
           Rejoindre
@@ -149,11 +166,12 @@ function Lobby({ profile }: { profile: StoredProfile }) {
 
       <div className="flex flex-col gap-2">
         <h2 className="font-bold">Tables ouvertes</h2>
-        {rooms.data?.length ? (
-          rooms.data.map((room) => (
+        {rooms.rooms.length ? (
+          rooms.rooms.map((room) => (
             <button
               key={room.code}
               type="button"
+              disabled={busy}
               onClick={() => join.mutate(room.code)}
               className="flex items-center gap-2 rounded-2xl bg-black/25 p-3 text-left ring-1 ring-white/10 active:translate-y-0.5"
             >
@@ -168,9 +186,13 @@ function Lobby({ profile }: { profile: StoredProfile }) {
               </span>
             </button>
           ))
-        ) : (
+        ) : rooms.ready ? (
           <p className="rounded-2xl border border-dashed border-ivory-dim/30 p-4 text-sm text-ivory-dim/70">
             Aucune table pour l&rsquo;instant. Crée la tienne et partage son code.
+          </p>
+        ) : (
+          <p className="rounded-2xl border border-dashed border-ivory-dim/20 p-4 text-sm text-ivory-dim/50">
+            On regarde qui joue…
           </p>
         )}
       </div>

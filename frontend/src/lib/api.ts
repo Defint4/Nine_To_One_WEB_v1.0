@@ -7,6 +7,12 @@ export function wsUrl(code: string, token: string): string {
   return `${base}/api/rooms/${code}/ws?token=${encodeURIComponent(token)}`;
 }
 
+/* Liste des tables ouvertes d'un jeu, poussée à chaque changement. */
+export function liveRoomsUrl(game: string): string {
+  const base = API_URL.replace(/^http/, "ws");
+  return `${base}/api/rooms/live?game=${encodeURIComponent(game)}`;
+}
+
 export class ApiError extends Error {
   constructor(public status: number, detail: string) {
     super(detail);

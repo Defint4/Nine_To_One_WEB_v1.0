@@ -24,17 +24,28 @@ export function setMuted(muted: boolean) {
   }
 }
 
-/* À appeler en entrant sur une table : télécharge les échantillons en avance. */
-export function preloadSounds() {
-  for (const name of FILES) {
-    if (raw.has(name)) continue;
-    fetch(`/sounds/${name}.wav`)
-      .then((res) => res.arrayBuffer())
-      .then((buf) => raw.set(name, buf))
-      .catch(() => {
-        /* le jeu reste silencieux pour ce son */
-      });
-  }
+/* À appeler en entrant sur une table : télécharge les échantillons en avance.
+   La promesse se résout quand tout est là (un échec ne bloque pas : ce son restera muet). */
+let pending: Promise<void> | null = null;
+
+export function preloadSounds(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (pending) return pending;
+  pending = Promise.all(
+    FILES.map((name) =>
+      raw.has(name)
+        ? Promise.resolve()
+        : fetch(`/sounds/${name}.wav`)
+            .then((res) => res.arrayBuffer())
+            .then((buf) => {
+              raw.set(name, buf);
+            })
+            .catch(() => {
+              /* le jeu reste silencieux pour ce son */
+            })
+    )
+  ).then(() => undefined);
+  return pending;
 }
 
 function audio(): AudioContext | null {

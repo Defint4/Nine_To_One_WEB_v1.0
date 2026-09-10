@@ -14,6 +14,7 @@ import asyncio
 import logging
 import random
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -134,15 +135,23 @@ class RoomManager:
             if code not in self.rooms:
                 return code
 
-    async def cleanup_loop(self) -> None:
-        """Supprime les tables fantômes (0 connecté depuis empty_room_ttl_minutes)."""
+    async def cleanup_loop(self, on_delete: Callable[[str], Awaitable[None]] | None = None) -> None:
+        """Supprime les tables fantômes (0 connecté depuis empty_room_ttl_minutes).
+
+        `on_delete(game)` est appelé pour chaque jeu touché (liste des tables en direct).
+        """
         ttl = timedelta(minutes=settings.empty_room_ttl_minutes)
         while True:
             await asyncio.sleep(60)
             now = datetime.now(UTC)
+            touched: set[str] = set()
             for code, room in list(self.rooms.items()):
                 if room.connected_count() == 0 and now - room.last_activity > ttl:
                     self.delete(code)
+                    touched.add(room.game)
+            if on_delete is not None:
+                for game in touched:
+                    await on_delete(game)
 
 
 manager = RoomManager()

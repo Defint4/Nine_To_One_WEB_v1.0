@@ -27,6 +27,7 @@ from app.games.registry import get_game
 from app.players import service as players_service
 from app.players.dependencies import get_current_player
 from app.players.models import Player
+from app.rooms import lobby
 from app.rooms.manager import Room, Seat, manager
 from app.rooms.schemas import CreateRoomRequest, RoomOut, open_room_summary
 from app.rooms.views import room_view
@@ -57,6 +58,7 @@ async def create_room(
     room = manager.create(
         spec, Seat(player_id=player.id, pseudo=player.pseudo, avatar=player.avatar)
     )
+    await lobby.notify(room.game)
     return RoomOut(code=room.code, game=room.game)
 
 
@@ -80,12 +82,22 @@ async def join_room(
         room.seats.append(Seat(player_id=player.id, pseudo=player.pseudo, avatar=player.avatar))
         room.touch()
         await _broadcast_state(room, [{"type": "player_joined", "pseudo": player.pseudo}])
+        await lobby.notify(room.game)
     return RoomOut(code=room.code, game=room.game)
 
 
 @router.get("")
 async def list_open_rooms(game: str | None = None) -> list[dict]:
     return [open_room_summary(room) for room in manager.open_rooms(game)]
+
+
+@router.websocket("/live")
+async def live_rooms(websocket: WebSocket, game: str) -> None:
+    """Liste des tables ouvertes d'un jeu, poussée à chaque changement."""
+    if get_game(game) is None:
+        await websocket.close(code=4404)
+        return
+    await lobby.watch(websocket, game)
 
 
 # ---------------------------------------------------------------------------
@@ -170,9 +182,11 @@ async def _free_seat(room: Room, seat_index: int) -> None:
     room.seats.pop(seat_index)
     if room.human_count() == 0:
         manager.delete(room.code)
+        await lobby.notify(room.game)
         return
     room.humans_first()
     await _broadcast_state(room, [{"type": "player_left", "seat": seat_index}])
+    await lobby.notify(room.game)
 
 
 async def _handle_message(
@@ -277,6 +291,9 @@ async def _after_move(room: Room, events: list[dict]) -> None:
         room.spec.on_game_over(room)
     _schedule_turn_timer(room)
     await _broadcast_state(room, events)
+    # La liste des tables ouvertes bouge tant qu'on est en lobby, et au démarrage.
+    if room.status is GameStatus.LOBBY or any(e["type"] == "game_started" for e in events):
+        await lobby.notify(room.game)
     room.spec.schedule_bots(room, _after_move)
 
 
@@ -338,6 +355,7 @@ async def _handle_rematch(room: Room, websocket: WebSocket) -> None:
     room.rematch_code = new_room.code
     room.touch()
     await _broadcast(room, {"type": "rematch", "code": new_room.code})
+    await lobby.notify(room.game)
     room.spec.schedule_bots(new_room, _after_move)
 
 

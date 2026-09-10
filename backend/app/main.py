@@ -9,6 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.players.router import router as players_router
+from app.rooms import lobby
 from app.rooms.manager import manager
 from app.rooms.router import router as rooms_router
 
@@ -21,7 +22,7 @@ if len(settings.jwt_secret) < 32:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    cleanup_task = asyncio.create_task(manager.cleanup_loop())
+    cleanup_task = asyncio.create_task(manager.cleanup_loop(on_delete=lobby.notify))
     yield
     cleanup_task.cancel()
 

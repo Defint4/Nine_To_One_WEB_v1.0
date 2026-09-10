@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
 import ChatPanel, { RecentChat } from "@/components/ChatPanel";
 import FlightLayer from "@/components/FlightLayer";
+import { LoadingScreen } from "@/components/Loading";
 import PlayingCard from "@/components/PlayingCard";
 import { Sheet } from "@/components/Sheet";
 import { joinRoom } from "@/lib/api";
@@ -36,6 +37,9 @@ export default function TablePage() {
   const [profile, setProfile] = useState<StoredProfile | null>(null);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joined, setJoined] = useState(false);
+  // Cartes et sons chargés avant d'afficher quoi que ce soit : sur un réseau lent,
+  // mieux vaut attendre un peu que voir des cartes blanches en pleine partie.
+  const [assetsReady, setAssetsReady] = useState(false);
 
   useEffect(() => {
     const current = currentProfile();
@@ -58,10 +62,14 @@ export default function TablePage() {
   }, [code, router]);
 
   useEffect(() => {
-    // Précharge les 52 faces et les sons pour éviter tout accroc en pleine partie.
-    preloadCards();
-    preloadSounds();
     applyFelt();
+    let cancelled = false;
+    Promise.all([preloadCards(), preloadSounds()]).then(() => {
+      if (!cancelled) setAssetsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -86,33 +94,9 @@ export default function TablePage() {
   }, []);
 
   if (joinError) return <Blocked message={joinError} />;
-  if (!profile || !joined) return <Connecting />;
+  if (!profile || !joined) return <LoadingScreen label="Connexion à la table…" />;
+  if (!assetsReady) return <LoadingScreen label="On sort les cartes…" />;
   return <Room code={code} token={profile.token} />;
-}
-
-/* Battage de cartes en guise d'écran de connexion. */
-function Connecting() {
-  return (
-    <Centered>
-      <div className="relative mb-4 h-16 w-16">
-        <motion.span
-          className="absolute left-1 top-0"
-          animate={{ rotate: [-14, 10, -14], y: [0, -6, 0] }}
-          transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut" }}
-        >
-          <PlayingCard faceDown size="sm" />
-        </motion.span>
-        <motion.span
-          className="absolute left-6 top-1"
-          animate={{ rotate: [12, -8, 12], y: [0, -10, 0] }}
-          transition={{ repeat: Infinity, duration: 1.1, ease: "easeInOut", delay: 0.15 }}
-        >
-          <PlayingCard faceDown size="sm" />
-        </motion.span>
-      </div>
-      Connexion à la table…
-    </Centered>
-  );
 }
 
 function Room({ code, token }: { code: string; token: string }) {
@@ -130,7 +114,7 @@ function Room({ code, token }: { code: string; token: string }) {
   }, [rematchCode, router]);
 
   if (socket.closedReason) return <Blocked message={socket.closedReason} />;
-  if (!socket.view) return <Connecting />;
+  if (!socket.view) return <LoadingScreen label="Connexion à la table…" />;
   const inLobby = socket.view.status === "lobby";
 
   return (
