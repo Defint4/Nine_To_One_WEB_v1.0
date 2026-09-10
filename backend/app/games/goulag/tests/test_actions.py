@@ -31,7 +31,7 @@ def test_only_current_player_in_action_phase():
     with pytest.raises(NotYourTurn):
         announce(state, 1, Action.ATTACK)
     with pytest.raises(InvalidAction):
-        choose_target(state, 0, 1)  # pas encore de carte piochée
+        choose_target(state, 0, 1)  # rien d'annoncé
 
 
 def test_charge_is_blind_and_capped_at_two():
@@ -53,10 +53,12 @@ def test_charge_is_blind_and_capped_at_two():
 def test_defend_self_replaces_defense_and_discards_old():
     state = two_players([card(12, C)])
     events = announce(state, 0, Action.DEFEND)
-    assert state.phase is Phase.TARGET and state.drawn == card(12, C)
-    assert events[-1]["type"] == "announced"
+    # Annonce à l'aveugle : rien n'est pioché tant que la cible n'est pas désignée.
+    assert state.phase is Phase.TARGET and state.draw_pile == [card(12, C)]
+    assert events == [{"type": "announced", "player": 0, "action": "defend"}]
     events = choose_target(state, 0, 0)
-    assert events[0]["type"] == "defense_changed"
+    assert events[0]["type"] == "revealed" and events[0]["card"] == card(12, C).to_dict()
+    assert events[1]["type"] == "defense_changed"
     assert state.players[0].defense == card(12, C)
     assert state.discard == [card(5, S)]
     assert state.phase is Phase.ACTION and state.turn_index == 1
@@ -74,11 +76,11 @@ def test_attack_blocked_by_defense_still_discards_cards():
     state = two_players([card(6, C)])  # 6 contre une défense de 7 : rien ne passe
     announce(state, 0, Action.ATTACK)
     events = choose_target(state, 0, 1)
-    attacked = events[0]
+    attacked = events[1]
     assert attacked["type"] == "attacked" and attacked["damage"] == 0
     assert state.players[1].life_total == 17
     assert state.discard == [card(6, C)]
-    assert [e["type"] for e in events] == ["attacked", "turn"]
+    assert [e["type"] for e in events] == ["revealed", "attacked", "turn"]
 
 
 def test_attack_with_charges_adds_them_and_consumes_them():
@@ -86,7 +88,7 @@ def test_attack_with_charges_adds_them_and_consumes_them():
     state.players[0].charges = [card(3, H), card(2, S)]
     announce(state, 0, Action.ATTACK)
     events = choose_target(state, 0, 1)
-    attacked = events[0]
+    attacked = events[1]
     assert attacked["total"] == 9 and attacked["defense"] == 7 and attacked["damage"] == 2
     assert state.players[0].charges == []
     assert state.players[1].life_total == 15
@@ -111,7 +113,7 @@ def test_cannot_attack_self_and_state_is_kept():
     announce(state, 0, Action.ATTACK)
     with pytest.raises(InvalidAction):
         choose_target(state, 0, 0)
-    assert state.phase is Phase.TARGET and state.drawn == card(13, C)
+    assert state.phase is Phase.TARGET and state.draw_pile == [card(13, C)]
     choose_target(state, 0, 1)
 
 

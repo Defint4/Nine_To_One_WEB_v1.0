@@ -1,8 +1,8 @@
 """Vue filtrée du Goulag : chaque joueur ne reçoit que ce qu'il a le droit de voir.
 
 Publiques : vies et défense de tous (posées face visible), nombre de charges de
-chacun, dessus de la défausse, tailles des piles, phase du tour. Privées : la carte
-piochée pendant qu'on choisit sa cible, la carte du dessus pour l'œil de faucon.
+chacun, dessus de la défausse, tailles des piles, phase du tour et action annoncée.
+Privée : la carte du dessus pour l'œil de faucon.
 Jamais envoyées : les charges (personne ne les voit, pas même leur propriétaire),
 le contenu de la pioche.
 """
@@ -37,12 +37,6 @@ def game_view(room: Room, seat_index: int) -> dict:
     return {
         "phase": state.phase.value if playing else None,
         "pending_action": state.pending_action.value if state.pending_action else None,
-        # La carte piochée, vue seulement par celui qui choisit sa cible.
-        "drawn": (
-            state.drawn.to_dict()
-            if state.drawn and state.phase is Phase.TARGET and state.turn_index == seat_index
-            else None
-        ),
         # Œil de faucon : la carte du dessus avant d'annoncer, pour le seul joueur concerné.
         "peek": top.to_dict() if top else None,
         "reviving": state.reviving,

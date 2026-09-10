@@ -27,7 +27,7 @@ class Phase(StrEnum):
     """Où en est le tour courant."""
 
     ACTION = "action"  # le joueur au trait annonce défense / charge / attaque, à l'aveugle
-    TARGET = "target"  # la carte est piochée et vue : il désigne la cible
+    TARGET = "target"  # il désigne la cible ; la carte n'est piochée qu'ensuite
     REVIVAL = "revival"  # un joueur vient de mourir : il choisit une couleur
 
 
@@ -88,9 +88,8 @@ class GameState:
     status: GameStatus = GameStatus.LOBBY
     turn_index: int = 0
     phase: Phase = Phase.ACTION
-    # Pendant TARGET : l'action annoncée et la carte piochée, vue par le joueur au trait.
+    # Pendant TARGET : l'action annoncée, en attente de la cible.
     pending_action: Action | None = None
-    drawn: Card | None = None
     # Pendant REVIVAL : le siège du mort qui doit choisir sa couleur.
     reviving: int | None = None
     # Nombre de joueurs déjà éliminés (pour finish_rank).
@@ -114,7 +113,6 @@ class GameState:
             "turn_index": self.turn_index,
             "phase": self.phase.value,
             "pending_action": self.pending_action.value if self.pending_action else None,
-            "drawn": self.drawn.to_dict() if self.drawn else None,
             "reviving": self.reviving,
             "eliminated": self.eliminated,
         }

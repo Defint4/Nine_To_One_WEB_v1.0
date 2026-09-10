@@ -3,13 +3,16 @@
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
+import FlipCard from "@/components/FlipCard";
 import PlayingCard from "@/components/PlayingCard";
 import { Sheet } from "@/components/Sheet";
+import { registerAnchor } from "@/lib/anchors";
 import type { CardT } from "@/lib/types";
 import { SUIT_GLYPH, SUIT_LABEL, face } from "./cards";
 import { GAME } from "./meta";
 import type { GoulagSocket } from "./socket";
 import type { ActionKind, PlayerView, RoomView, SuitName } from "./types";
+import { useChoreography, type CenterFx, type SeatFx } from "./useChoreography";
 
 /* La table du Goulag, vue de ta place. Les adversaires sont assis autour d'un ovale
    dans l'ordre réel des tours (ton voisin de gauche joue après toi) ; chacun a son
@@ -17,16 +20,28 @@ import type { ActionKind, PlayerView, RoomView, SuitName } from "./types";
    Le tapis est en vraie perspective ; les objets vivent dans leur propre petit
    espace 3D (inclinaison, relief), ce qui garde les cartes nettes et tapables. */
 
-export default function Table({ socket, view }: { socket: GoulagSocket; view: RoomView }) {
+export default function Table({
+  socket,
+  view: live,
+}: {
+  socket: GoulagSocket;
+  view: RoomView;
+}) {
+  // La vue affichée suit la chorégraphie : elle ne bascule qu'une fois les vols joués.
+  const { shown: view, fx } = useChoreography(socket, live);
   const me = view.your_seat;
   const you = view.players[me];
   const n = view.players.length;
-  const opponents = Array.from({ length: n - 1 }, (_, i) => view.players[(me + 1 + i) % n]);
+  const opponents = Array.from(
+    { length: n - 1 },
+    (_, i) => view.players[(me + 1 + i) % n],
+  );
   const yourTurn = view.turn === me && view.status === "playing";
   const targeting = yourTurn && view.phase === "target";
   const canTarget = (p: PlayerView) =>
     targeting && p.alive && (view.pending_action === "defend" || p.seat !== me);
-  const active = view.status === "playing" ? (view.reviving ?? view.turn) : null;
+  const active =
+    view.status === "playing" ? (view.reviving ?? view.turn) : null;
 
   return (
     <div className="relative flex h-full flex-col">
@@ -42,10 +57,11 @@ export default function Table({ socket, view }: { socket: GoulagSocket; view: Ro
             place={seatPlacement(i + 1, n)}
             active={active === p.seat}
             targetable={canTarget(p)}
+            fx={fx.seats[p.seat]}
             onTarget={() => socket.target(p.seat)}
           />
         ))}
-        <Piles view={view} />
+        <Piles view={view} center={fx.center} />
       </div>
 
       {/* Ta place */}
@@ -56,9 +72,12 @@ export default function Table({ socket, view }: { socket: GoulagSocket; view: Ro
         yourTurn={yourTurn}
         targetable={canTarget(you)}
         active={active === me}
+        fx={fx.seats[me]}
       />
 
-      {view.must_choose_suit && <SuitPicker onPick={(suit) => socket.chooseSuit(suit)} />}
+      {view.must_choose_suit && (
+        <SuitPicker onPick={(suit) => socket.chooseSuit(suit)} />
+      )}
       {view.status === "finished" && <Results view={view} socket={socket} />}
     </div>
   );
@@ -79,22 +98,22 @@ const PLACES: Record<number, [number, number][]> = {
     [74, 22],
   ],
   3: [
-    [22, 44],
+    [25, 44],
     [50, 12],
-    [78, 44],
+    [75, 44],
   ],
   4: [
-    [22, 56],
-    [26, 16],
-    [74, 16],
-    [78, 56],
+    [25, 56],
+    [27, 16],
+    [73, 16],
+    [75, 56],
   ],
   5: [
-    [22, 62],
-    [24, 32],
+    [25, 62],
+    [26, 32],
     [50, 10],
-    [76, 32],
-    [78, 62],
+    [74, 32],
+    [75, 62],
   ],
 };
 
@@ -109,10 +128,11 @@ function seatPlacement(k: number, n: number): { left: string; top: string } {
 
 function Felt() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div
-        className="absolute inset-x-[-14%] top-[2%] h-[118%] [perspective:900px] [perspective-origin:50%_30%]"
-      >
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      <div className="absolute inset-x-[-14%] top-[2%] h-[118%] [perspective:900px] [perspective-origin:50%_30%]">
         {/* Le bord de bois, légèrement plus grand et plus bas : l'épaisseur de la table. */}
         <div
           className="absolute inset-0 rounded-[50%]"
@@ -147,12 +167,14 @@ function OpponentSeat({
   place,
   active,
   targetable,
+  fx,
   onTarget,
 }: {
   player: PlayerView;
   place: { left: string; top: string };
   active: boolean;
   targetable: boolean;
+  fx?: SeatFx;
   onTarget: () => void;
 }) {
   const dead = !player.alive;
@@ -161,19 +183,86 @@ function OpponentSeat({
       className="absolute -translate-x-1/2 -translate-y-1/2"
       style={{ left: place.left, top: place.top }}
     >
-      <button
-        type="button"
-        disabled={!targetable}
-        onClick={onTarget}
-        aria-label={targetable ? `Viser ${player.pseudo}` : player.pseudo}
-        className={`flex flex-col items-center gap-1 rounded-2xl p-1 transition ${
-          targetable ? "bg-gold/15 ring-2 ring-gold shadow-[0_0_24px_rgba(229,181,74,0.5)] active:scale-95" : ""
-        } ${dead ? "opacity-45 grayscale" : ""}`}
-      >
-        <SeatHeader player={player} active={active} size="md" />
-        <Mat player={player} size="sm" />
-      </button>
+      <SeatEffects fx={fx}>
+        <button
+          type="button"
+          disabled={!targetable}
+          onClick={onTarget}
+          aria-label={targetable ? `Viser ${player.pseudo}` : player.pseudo}
+          className={`flex flex-col items-center gap-1 rounded-2xl p-1 transition ${
+            targetable
+              ? "bg-gold/15 ring-2 ring-gold shadow-[0_0_24px_rgba(229,181,74,0.5)] active:scale-95"
+              : ""
+          } ${dead ? "opacity-45 grayscale" : ""}`}
+        >
+          <SeatHeader player={player} active={active} size="md" />
+          <Mat player={player} size="sm" />
+        </button>
+      </SeatEffects>
     </div>
+  );
+}
+
+/* Ce qui arrive à un siège : secousse à l'impact, éclat (rouge, doré, vert, noir)
+   et un mot ou un chiffre qui monte (dégâts, bloqué, couleur choisie…). */
+function SeatEffects({
+  fx,
+  children,
+}: {
+  fx?: SeatFx;
+  children: React.ReactNode;
+}) {
+  const flashClass = {
+    hit: "ring-4 ring-card-red shadow-[0_0_40px_rgba(195,64,47,0.8)]",
+    block: "ring-4 ring-gold shadow-[0_0_36px_rgba(229,181,74,0.8)]",
+    heal: "ring-4 ring-felt-600 shadow-[0_0_36px_rgba(37,107,86,0.9)]",
+    death: "ring-4 ring-black shadow-[0_0_40px_rgba(0,0,0,0.9)]",
+  };
+  const popupClass = {
+    damage: "bg-card-red text-ivory",
+    block: "bg-gold text-ink",
+    info: "bg-ink text-ivory ring-1 ring-white/25",
+  };
+  return (
+    <motion.div
+      key={fx?.shake ?? 0}
+      className="relative"
+      animate={
+        fx?.shake
+          ? { x: [0, -7, 7, -5, 5, -2, 0], rotate: [0, -2, 2, -1, 1, 0] }
+          : { x: 0, rotate: 0 }
+      }
+      transition={{ duration: 0.42 }}
+    >
+      <AnimatePresence>
+        {fx?.flash && (
+          <motion.span
+            key={fx.flash}
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+            className={`pointer-events-none absolute -inset-1 rounded-2xl ${flashClass[fx.flash]}`}
+          />
+        )}
+      </AnimatePresence>
+      {children}
+      <AnimatePresence>
+        {fx?.popup && (
+          <motion.span
+            key={fx.popup.id}
+            initial={{ opacity: 0, y: 6, scale: 0.7 }}
+            animate={{ opacity: 1, y: -18, scale: 1 }}
+            exit={{ opacity: 0, y: -34 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className={`pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 rounded-full px-3 py-0.5 text-lg font-extrabold shadow-card ${popupClass[fx.popup.tone]}`}
+          >
+            {fx.popup.text}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -188,7 +277,7 @@ function SeatHeader({
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="relative">
+      <span className="relative" ref={registerAnchor(`seat-${player.seat}`)}>
         {active && (
           <motion.span
             aria-hidden
@@ -200,9 +289,13 @@ function SeatHeader({
         <Avatar id={player.avatar} size={size} dimmed={!player.connected} />
       </span>
       <span className="flex flex-col leading-tight">
-        <span className="max-w-[5.25rem] truncate text-xs font-bold">{player.pseudo}</span>
+        <span className="max-w-[5.25rem] truncate text-xs font-bold">
+          {player.pseudo}
+        </span>
         {player.hawk_eye && player.alive && (
-          <span className="text-[10px] font-semibold text-gold">Œil de faucon</span>
+          <span className="text-[10px] font-semibold text-gold">
+            Œil de faucon
+          </span>
         )}
       </span>
     </div>
@@ -215,12 +308,20 @@ function Mat({ player, size }: { player: PlayerView; size: "sm" | "md" }) {
   const dead = !player.alive;
   const lifeCards = player.lives;
   return (
-    <div className="flex items-end gap-1.5">
+    <div className="flex items-end gap-1">
       {player.defense && (
-        <Shield card={player.defense} size={size} dimmed={dead} />
+        <Shield
+          seat={player.seat}
+          card={player.defense}
+          size={size}
+          dimmed={dead}
+        />
       )}
       <div className="relative flex flex-col items-center">
-        <div className="flex [perspective:500px]">
+        <div
+          className="flex [perspective:500px]"
+          ref={registerAnchor(`lives-${player.seat}`)}
+        >
           {lifeCards.map((card, i) => (
             <Laid key={`${card.value}-${card.suit}`} index={i} size={size}>
               <PlayingCard card={face(card)} size={size} />
@@ -234,18 +335,38 @@ function Mat({ player, size }: { player: PlayerView; size: "sm" | "md" }) {
         </div>
         <LifeBadge total={player.life_total} alive={player.alive} size={size} />
       </div>
-      {player.charges > 0 && (
-        <div className="relative [perspective:500px]" aria-label={`${player.charges} charge(s)`}>
-          {Array.from({ length: player.charges }, (_, i) => (
-            <span
-              key={i}
-              className={i === 0 ? "block" : "absolute left-0 top-0"}
-              style={{ transform: `translate(${i * 3}px, ${-i * 3}px) rotateX(14deg)` }}
-            >
-              <PlayingCard faceDown size={size === "sm" ? "xs" : "sm"} />
-            </span>
-          ))}
+      {player.charges > 0 ? (
+        <div
+          className="relative flex flex-col items-center [perspective:500px]"
+          aria-label={`${player.charges} charge${player.charges > 1 ? "s" : ""}`}
+        >
+          <div
+            className="relative"
+            ref={registerAnchor(`charges-${player.seat}`)}
+          >
+            {Array.from({ length: player.charges }, (_, i) => (
+              <span
+                key={i}
+                className={`drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)] ${i === 0 ? "block" : "absolute left-0 top-0"}`}
+                style={{
+                  transform: `translate(${i * 4}px, ${-i * 4}px) rotateX(14deg) rotateZ(${i ? 8 : -3}deg)`,
+                }}
+              >
+                <PlayingCard faceDown size={size} />
+              </span>
+            ))}
+          </div>
+          <span className="-mt-1.5 rounded-full bg-gold px-1.5 text-[11px] font-extrabold leading-4 tracking-wide text-ink ring-1 ring-black/30">
+            {player.charges === 1 ? "1 charge" : `${player.charges} charges`}
+          </span>
         </div>
+      ) : (
+        // L'emplacement des charges, invisible : la cible du vol quand on charge.
+        <span
+          aria-hidden
+          ref={registerAnchor(`charges-${player.seat}`)}
+          className={`${size === "sm" ? "h-[3.375rem] w-9" : "h-[5.25rem] w-14"} shrink-0`}
+        />
       )}
     </div>
   );
@@ -265,7 +386,9 @@ function Laid({
   return (
     <span
       className={`block ${overlap} drop-shadow-[0_6px_6px_rgba(0,0,0,0.35)]`}
-      style={{ transform: `rotateX(14deg) rotateZ(${index === 0 ? -4 : 4}deg)` }}
+      style={{
+        transform: `rotateX(14deg) rotateZ(${index === 0 ? -4 : 4}deg)`,
+      }}
     >
       {children}
     </span>
@@ -273,14 +396,29 @@ function Laid({
 }
 
 /* Le bouclier : la carte de défense couchée devant les vies, sa valeur en médaillon. */
-function Shield({ card, size, dimmed }: { card: CardT; size: "sm" | "md"; dimmed: boolean }) {
+function Shield({
+  seat,
+  card,
+  size,
+  dimmed,
+}: {
+  seat: number;
+  card: CardT;
+  size: "sm" | "md";
+  dimmed: boolean;
+}) {
   const w = size === "sm" ? "w-[3.375rem]" : "w-[5.25rem]";
   const h = size === "sm" ? "h-9" : "h-14";
   return (
-    <div className={`relative ${w} ${h} shrink-0 [perspective:500px]`}>
+    <div
+      className={`relative ${w} ${h} shrink-0 [perspective:500px]`}
+      ref={registerAnchor(`shield-${seat}`)}
+    >
       <span
         className="absolute left-1/2 top-1/2 block drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)]"
-        style={{ transform: "translate(-50%, -50%) rotateX(14deg) rotateZ(-90deg)" }}
+        style={{
+          transform: "translate(-50%, -50%) rotateX(14deg) rotateZ(-90deg)",
+        }}
       >
         <PlayingCard card={face(card)} size={size} />
       </span>
@@ -295,7 +433,15 @@ function Shield({ card, size, dimmed }: { card: CardT; size: "sm" | "md"; dimmed
   );
 }
 
-function LifeBadge({ total, alive, size }: { total: number; alive: boolean; size: "sm" | "md" }) {
+function LifeBadge({
+  total,
+  alive,
+  size,
+}: {
+  total: number;
+  alive: boolean;
+  size: "sm" | "md";
+}) {
   const low = alive && total <= 3;
   return (
     <span
@@ -312,25 +458,60 @@ function LifeBadge({ total, alive, size }: { total: number; alive: boolean; size
 /* Le centre : pioche et défausse                                             */
 /* ----------------------------------------------------------------------- */
 
-function Piles({ view }: { view: RoomView }) {
+function Piles({ view, center }: { view: RoomView; center: CenterFx }) {
+  const glow = {
+    reveal: "shadow-[0_0_30px_rgba(255,255,255,0.35)]",
+    success: "shadow-[0_0_50px_rgba(229,181,74,0.95)] ring-4 ring-gold",
+    fail: "shadow-[0_0_40px_rgba(195,64,47,0.9)] ring-4 ring-card-red",
+  };
   return (
     <div className="pointer-events-none absolute left-1/2 top-[84%] flex -translate-x-1/2 -translate-y-1/2 items-end gap-5 [perspective:600px]">
       <div className="relative flex flex-col items-center">
-        <div className="relative h-[3.375rem] w-9">
+        <div className="relative h-[3.375rem] w-9" ref={registerAnchor("deck")}>
           {[2, 1, 0].map((i) => (
-            <span
+            <motion.span
               key={i}
               className="absolute left-0 top-0 block"
-              style={{ transform: `translateY(${-i * 2}px) rotateX(14deg)` }}
+              animate={{
+                // La coupe : la moitié du dessus glisse sur le côté, le temps de prendre
+                // la carte du milieu.
+                x: center.split && i < 1 ? 26 : 0,
+                y: -i * 2 + (center.split && i < 1 ? -8 : 0),
+              }}
+              style={{ transform: "rotateX(14deg)" }}
+              transition={{ type: "spring", stiffness: 300, damping: 24 }}
             >
               <PlayingCard faceDown size="sm" />
-            </span>
+            </motion.span>
           ))}
+          <AnimatePresence>
+            {center.card && (
+              <motion.span
+                key={`${center.card.value}-${center.card.suit}`}
+                initial={{ opacity: 0, y: 0, scale: 0.6 }}
+                animate={{ opacity: 1, y: -70, scale: 1 }}
+                exit={{
+                  opacity: 0,
+                  scale: 0.8,
+                  transition: { duration: 0.15 },
+                }}
+                transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                className={`absolute left-1/2 top-0 z-20 -translate-x-1/2 rounded-lg ${glow[center.tone]}`}
+              >
+                <FlipCard card={center.card} size="lg" duration={0.55} />
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
-        <span className="mt-1 text-[10px] font-semibold text-ivory-dim/70">{view.draw_count}</span>
+        <span className="mt-1 text-[10px] font-semibold text-ivory-dim/70">
+          {view.draw_count}
+        </span>
       </div>
       <div className="relative flex flex-col items-center">
-        <div className="relative h-[3.375rem] w-9">
+        <div
+          className="relative h-[3.375rem] w-9"
+          ref={registerAnchor("discard")}
+        >
           {view.discard_top ? (
             <span
               className="absolute left-0 top-0 block drop-shadow-[0_4px_4px_rgba(0,0,0,0.35)]"
@@ -342,7 +523,9 @@ function Piles({ view }: { view: RoomView }) {
             <span className="block h-full w-full rounded border border-dashed border-ivory-dim/30" />
           )}
         </div>
-        <span className="mt-1 text-[10px] font-semibold text-ivory-dim/70">{view.discard_count}</span>
+        <span className="mt-1 text-[10px] font-semibold text-ivory-dim/70">
+          {view.discard_count}
+        </span>
       </div>
     </div>
   );
@@ -357,12 +540,18 @@ function Banner({ view, you }: { view: RoomView; you: PlayerView }) {
   if (view.status !== "playing") text = "";
   else if (view.phase === "revival") {
     const dead = view.players[view.reviving ?? 0];
-    text = dead.seat === you.seat ? "Tu es à terre. Choisis ta couleur." : `${dead.pseudo} joue sa peau…`;
+    text =
+      dead.seat === you.seat
+        ? "Tu es à terre. Choisis ta couleur."
+        : `${dead.pseudo} joue sa peau…`;
   } else if (view.turn === you.seat) {
     text = view.phase === "target" ? "Désigne ta cible." : "À toi de jouer.";
   } else {
     const p = view.players[view.turn ?? 0];
-    text = view.phase === "target" ? `${p.pseudo} choisit sa cible…` : `Au tour de ${p.pseudo}.`;
+    text =
+      view.phase === "target"
+        ? `${p.pseudo} choisit sa cible…`
+        : `Au tour de ${p.pseudo}.`;
   }
   return (
     <div className="pointer-events-none relative z-10 flex h-11 items-center justify-center pr-14 pl-4">
@@ -393,6 +582,7 @@ function YourZone({
   yourTurn,
   targetable,
   active,
+  fx,
 }: {
   socket: GoulagSocket;
   view: RoomView;
@@ -400,22 +590,29 @@ function YourZone({
   yourTurn: boolean;
   targetable: boolean;
   active: boolean;
+  fx?: SeatFx;
 }) {
   const announcing = yourTurn && view.phase === "action";
   return (
     <div className="relative z-10 flex flex-col gap-2 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
       <div className="flex items-end justify-between gap-3">
-        <button
-          type="button"
-          disabled={!targetable}
-          onClick={() => socket.target(you.seat)}
-          aria-label={targetable ? "Garder cette défense pour toi" : "Ton tapis"}
-          className={`rounded-2xl p-1.5 ${
-            targetable ? "bg-gold/15 ring-2 ring-gold shadow-[0_0_24px_rgba(229,181,74,0.5)] active:scale-95" : ""
-          } ${you.alive ? "" : "opacity-45 grayscale"}`}
-        >
-          <Mat player={you} size="md" />
-        </button>
+        <SeatEffects fx={fx}>
+          <button
+            type="button"
+            disabled={!targetable}
+            onClick={() => socket.target(you.seat)}
+            aria-label={
+              targetable ? "Garder cette défense pour toi" : "Ton tapis"
+            }
+            className={`rounded-2xl p-1.5 ${
+              targetable
+                ? "bg-gold/15 ring-2 ring-gold shadow-[0_0_24px_rgba(229,181,74,0.5)] active:scale-95"
+                : ""
+            } ${you.alive ? "" : "opacity-45 grayscale"}`}
+          >
+            <Mat player={you} size="md" />
+          </button>
+        </SeatEffects>
         <SeatHeader player={you} active={active} size="lg" />
       </div>
 
@@ -431,13 +628,21 @@ function YourZone({
             >
               {view.peek && (
                 <div className="flex flex-col items-center justify-center rounded-2xl bg-black/30 px-2 ring-1 ring-gold/40">
-                  <span className="mb-1 text-[10px] font-bold text-gold">Tu vois</span>
-                  <span style={{ transform: "rotateX(10deg)" }} className="[perspective:300px]">
+                  <span className="mb-1 text-[10px] font-bold text-gold">
+                    Tu vois
+                  </span>
+                  <span
+                    style={{ transform: "rotateX(10deg)" }}
+                    className="[perspective:300px]"
+                  >
                     <PlayingCard card={face(view.peek)} size="sm" />
                   </span>
                 </div>
               )}
-              <ActionButton kind="defend" onClick={() => socket.announce("defend")}>
+              <ActionButton
+                kind="defend"
+                onClick={() => socket.announce("defend")}
+              >
                 Défense
               </ActionButton>
               <ActionButton
@@ -447,25 +652,31 @@ function YourZone({
               >
                 Charge
               </ActionButton>
-              <ActionButton kind="attack" onClick={() => socket.announce("attack")}>
+              <ActionButton
+                kind="attack"
+                onClick={() => socket.announce("attack")}
+              >
                 Attaque
               </ActionButton>
             </motion.div>
-          ) : yourTurn && view.phase === "target" && view.drawn ? (
+          ) : yourTurn && view.phase === "target" ? (
             <motion.div
               key="target"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
-              className="flex items-center gap-3 rounded-2xl bg-black/30 p-2 ring-1 ring-white/10"
+              className="flex items-center gap-3 rounded-2xl bg-black/30 p-3 ring-1 ring-white/10"
             >
-              <span className="[perspective:300px]" style={{ transform: "rotateX(10deg)" }}>
-                <PlayingCard card={face(view.drawn)} size="md" />
+              <span
+                className="[perspective:300px]"
+                style={{ transform: "rotateX(10deg)" }}
+              >
+                <PlayingCard faceDown size="md" />
               </span>
               <p className="text-sm font-semibold text-ivory-dim">
                 {view.pending_action === "attack"
-                  ? `Tu attaques avec ${view.drawn.value}${you.charges ? ` et ${you.charges} charge${you.charges > 1 ? "s" : ""}` : ""}. Touche un adversaire.`
-                  : `Un ${view.drawn.value} en défense : pour toi, ou pour quelqu'un d'autre ?`}
+                  ? `Tu attaques${you.charges ? ` avec ${you.charges} charge${you.charges > 1 ? "s" : ""}` : ""}. Touche un adversaire, la carte sera retournée ensuite.`
+                  : "Cette défense : pour toi, ou pour quelqu'un d'autre ? La carte sera retournée ensuite."}
               </p>
             </motion.div>
           ) : (
@@ -521,9 +732,12 @@ function SuitPicker({ onPick }: { onPick: (suit: SuitName) => void }) {
   const suits: SuitName[] = ["hearts", "diamonds", "clubs", "spades"];
   return (
     <Sheet onClose={() => {}}>
-      <h2 className="mb-1 text-center text-lg font-extrabold">Tu es à terre.</h2>
+      <h2 className="mb-1 text-center text-lg font-extrabold">
+        Tu es à terre.
+      </h2>
       <p className="mb-4 text-center text-sm text-ivory-dim/80">
-        Choisis une couleur : si la prochaine carte est de cette couleur, tu revis avec.
+        Choisis une couleur : si la prochaine carte est de cette couleur, tu
+        revis avec.
       </p>
       <div className="grid grid-cols-2 gap-2">
         {suits.map((suit) => (
@@ -532,10 +746,13 @@ function SuitPicker({ onPick }: { onPick: (suit: SuitName) => void }) {
             type="button"
             onClick={() => onPick(suit)}
             className={`flex items-center justify-center gap-2 rounded-2xl bg-white py-4 text-xl font-extrabold ring-1 ring-white/20 active:translate-y-0.5 ${
-              suit === "hearts" || suit === "diamonds" ? "text-card-red" : "text-ink"
+              suit === "hearts" || suit === "diamonds"
+                ? "text-card-red"
+                : "text-ink"
             }`}
           >
-            <span className="text-2xl">{SUIT_GLYPH[suit]}</span> {SUIT_LABEL[suit]}
+            <span className="text-2xl">{SUIT_GLYPH[suit]}</span>{" "}
+            {SUIT_LABEL[suit]}
           </button>
         ))}
       </div>
@@ -548,7 +765,9 @@ function SuitPicker({ onPick }: { onPick: (suit: SuitName) => void }) {
 /* ----------------------------------------------------------------------- */
 
 function Results({ view, socket }: { view: RoomView; socket: GoulagSocket }) {
-  const ranked = [...view.players].sort((a, b) => (a.finish_rank ?? 99) - (b.finish_rank ?? 99));
+  const ranked = [...view.players].sort(
+    (a, b) => (a.finish_rank ?? 99) - (b.finish_rank ?? 99),
+  );
   const winner = ranked[0];
   const won = winner.seat === view.your_seat;
   return (
@@ -563,8 +782,13 @@ function Results({ view, socket }: { view: RoomView; socket: GoulagSocket }) {
         </h2>
         <ol className="flex flex-col gap-1">
           {ranked.map((p) => (
-            <li key={p.seat} className="flex items-center gap-2 rounded-xl bg-black/25 p-2">
-              <span className="w-5 text-center text-sm font-extrabold text-gold">{p.finish_rank}</span>
+            <li
+              key={p.seat}
+              className="flex items-center gap-2 rounded-xl bg-black/25 p-2"
+            >
+              <span className="w-5 text-center text-sm font-extrabold text-gold">
+                {p.finish_rank}
+              </span>
               <Avatar id={p.avatar} size="sm" />
               <span className="font-bold">{p.pseudo}</span>
             </li>

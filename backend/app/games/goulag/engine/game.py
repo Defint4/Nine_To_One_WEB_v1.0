@@ -5,10 +5,10 @@ coup illégal. Aucune I/O ici. Les fonctions d'action renvoient une liste
 d'événements (dicts) décrivant ce qui s'est passé, pour les animations côté client.
 
 Règles (docs/goulag/README.md) et arbitrages retenus :
-- Le joueur annonce son action (défense, charge, attaque) avant de voir la carte ;
-  il voit ensuite la carte, puis désigne la cible (défense : lui-même ou un autre ;
-  attaque : un autre). « Œil de faucon » (un seul As de vie) voit la carte avant
-  d'annoncer.
+- Le joueur annonce son action (défense, charge, attaque) puis, pour une défense ou
+  une attaque, désigne sa cible (défense : lui-même ou un autre ; attaque : un autre),
+  le tout sans avoir vu la carte : elle n'est piochée et révélée qu'une fois la cible
+  choisie. « Œil de faucon » (un seul As de vie) voit la carte avant d'annoncer.
 - Dégâts = attaque (carte + charges) − défense de la cible ; rien ne passe si ≤ 0.
   La défense n'est jamais consommée. Les cartes jouées vont à la défausse avant
   toute recherche de carte de remplacement.
@@ -130,44 +130,50 @@ def can_charge(state: GameState, player_index: int) -> bool:
 
 
 def announce(state: GameState, player_index: int, action: Action) -> list[Event]:
-    """Le joueur au trait annonce son action et pioche.
+    """Le joueur au trait annonce son action, à l'aveugle.
 
-    Charge : réglée immédiatement. Défense / attaque : la carte est vue, le tour
-    passe en phase TARGET en attendant la cible.
+    Charge : il pioche et pose aussitôt. Défense / attaque : le tour passe en phase
+    TARGET, la carte n'est piochée qu'une fois la cible désignée.
     """
     _check_turn(state, player_index, Phase.ACTION)
     player = state.players[player_index]
     if action is Action.CHARGE and not can_charge(state, player_index):
         raise IllegalMove("Deux charges maximum.")
-    card, events = _draw(state)
     if action is Action.CHARGE:
+        card, events = _draw(state)
         player.charges.append(card)
         events.append({"type": "charged", "player": player_index, "charges": len(player.charges)})
         events.extend(_end_turn(state))
         return events
     state.phase = Phase.TARGET
     state.pending_action = action
-    state.drawn = card
-    events.append({"type": "announced", "player": player_index, "action": action.value})
-    return events
+    return [{"type": "announced", "player": player_index, "action": action.value}]
 
 
 def choose_target(state: GameState, player_index: int, target_index: int) -> list[Event]:
-    """Après avoir vu la carte : qui reçoit la défense, ou qui encaisse l'attaque."""
+    """La cible désignée, on pioche et on révèle : la défense change, ou l'attaque frappe."""
     _check_turn(state, player_index, Phase.TARGET)
     if not (0 <= target_index < len(state.players)) or not state.players[target_index].alive:
         raise InvalidAction("Cible invalide.")
-    card = state.drawn
     action = state.pending_action
-    assert card is not None and action is not None
+    assert action is not None
     if action is Action.ATTACK and target_index == player_index:
         raise InvalidAction("On ne s'attaque pas soi-même.")
-    state.drawn = None
     state.pending_action = None
+    card, events = _draw(state)
+    events.append(
+        {
+            "type": "revealed",
+            "player": player_index,
+            "target": target_index,
+            "action": action.value,
+            "card": card.to_dict(),
+        }
+    )
     if action is Action.DEFEND:
-        events = _defend(state, player_index, target_index, card)
+        events.extend(_defend(state, player_index, target_index, card))
     else:
-        events = _attack(state, player_index, target_index, card)
+        events.extend(_attack(state, player_index, target_index, card))
     if state.phase is not Phase.REVIVAL:
         events.extend(_end_turn(state))
     return events

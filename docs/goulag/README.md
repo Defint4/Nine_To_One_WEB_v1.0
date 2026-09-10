@@ -25,7 +25,8 @@ ensuite dans le sens horaire.
   sont attaque moins défense de la cible ; si rien ne dépasse, rien ne passe. La défense
   n'est jamais consommée. Toutes les cartes jouées vont à la défausse.
 
-Pour la défense et l'attaque, la cible est désignée après avoir vu la carte.
+Pour la défense et l'attaque, la cible est désignée elle aussi à l'aveugle : la carte
+n'est piochée et révélée qu'une fois la cible choisie.
 
 **Charges.** Elles restent en place tant qu'on ne les utilise pas. Un joueur touché aux
 vies perd les siennes.
@@ -49,7 +50,8 @@ avant d'annoncer son action.
 
 ## Arbitrages retenus
 
-- La cible se choisit après avoir vu la carte (l'annonce, elle, est à l'aveugle).
+- Annonce puis cible, le tout à l'aveugle ; la carte est piochée et révélée ensuite (seul
+  l'œil de faucon la connaît d'avance).
 - Une attaque qui touche les vies fait perdre ses charges au défenseur ; les charges d'un
   joueur éliminé vont à la défausse.
 - S'il n'existe aucune carte de la valeur exacte à recomposer, deux cartes qui font la
@@ -80,18 +82,19 @@ rematch, leave, sync) :
 |---|---|---|
 | `ready` | `ready` (bool) | lobby |
 | `announce` | `action_kind` : `defend` / `charge` / `attack` | `action`, à son tour |
-| `target` | `seat` | `target`, à son tour (soi-même autorisé pour `defend`) |
+| `target` | `seat` | `target`, à son tour (soi-même autorisé pour `defend`) ; pioche et révèle |
 | `suit` | `suit` : `hearts` / `diamonds` / `clubs` / `spades` | `revival`, par le mort |
 
 ## Ce que voit un siège
 
 Public : vies, défense, nombre de charges et état (vivant, œil de faucon) de chacun,
 dessus de la défausse, tailles des piles, phase du tour, action annoncée. Privé : la carte
-piochée pendant qu'on choisit sa cible (`drawn`), la carte du dessus pour l'œil de faucon
-(`peek`). Jamais envoyé : les charges (pas même les siennes), la pioche.
+du dessus pour l'œil de faucon (`peek`). Jamais envoyé : les charges (pas même les
+siennes), la pioche.
 
 Événements diffusés pour les animations : `game_started`, `turn`, `announced`, `charged`,
-`defense_changed`, `attacked` (carte, charges, total, défense, dégâts), `charges_lost`,
+`revealed` (la carte piochée, l'action et la cible), `defense_changed`, `attacked` (carte,
+charges, total, défense, dégâts), `charges_lost`,
 `lives_updated` (cartes retirées / ajoutées), `died`, `suit_chosen`, `revival_flip`
 (tentative, carte, succès), `revived`, `eliminated`, `deck_reshuffled`, `game_over`.
 

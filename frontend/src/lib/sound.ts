@@ -6,7 +6,24 @@ let ctx: AudioContext | null = null;
 const raw = new Map<string, ArrayBuffer>();
 const buffers = new Map<string, AudioBuffer>();
 
-const FILES = ["place-1", "place-2", "place-3", "slide-1", "slide-2", "shove-1", "fan"];
+const FILES = [
+  "place-1",
+  "place-2",
+  "place-3",
+  "slide-1",
+  "slide-2",
+  "shove-1",
+  "fan",
+  // Goulag : coups (pack Impact Sounds de Kenney), mélange (pack Casino).
+  "hit-1",
+  "hit-2",
+  "hit-3",
+  "block-1",
+  "block-2",
+  "bell",
+  "thud",
+  "shuffle",
+];
 
 export function isMuted(): boolean {
   try {
@@ -100,6 +117,13 @@ function tone(freq: number, at: number, dur: number, volume: number) {
 
 export const sfx = {
   play: () => sample(["place-1", "place-2", "place-3"], 0.8),
+  /* Goulag : un coup qui passe, un coup bloqué par le bouclier, la cloche d'une
+     résurrection, la chute d'un éliminé, le mélange de la défausse. */
+  hit: () => sample(["hit-1", "hit-2", "hit-3"], 0.9),
+  block: () => sample(["block-1", "block-2"], 0.8),
+  bell: () => sample(["bell"], 0.7),
+  thud: () => sample(["thud"], 0.9),
+  shuffle: () => sample(["shuffle"], 0.6),
   flip: () => sample(["slide-2"], 0.7),
   deal: () => sample(["fan"], 0.7),
   cut: () => sample(["shove-1"], 0.9),

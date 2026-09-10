@@ -21,8 +21,6 @@ export type RoomView = Omit<BaseRoomView, "players"> & {
   players: PlayerView[];
   phase: Phase | null;
   pending_action: "defend" | "attack" | null;
-  /* La carte piochée, visible seulement par celui qui choisit sa cible. */
-  drawn: CardT | null;
   /* Œil de faucon : la carte du dessus, visible seulement par le joueur concerné. */
   peek: CardT | null;
   reviving: number | null;

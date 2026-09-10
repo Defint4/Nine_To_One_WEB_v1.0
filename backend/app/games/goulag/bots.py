@@ -125,31 +125,36 @@ def _choose_action(view: dict, difficulty: str) -> Action:
 
 
 def _choose_target(view: dict, difficulty: str) -> int:
+    """La cible se choisit sans connaître la carte (sauf œil de faucon : `peek`)."""
     me_seat = view["your_seat"]
     me = view["players"][me_seat]
-    drawn = view["drawn"]["value"]
     others = _opponents(view)
+    known = view["peek"]["value"] if view["peek"] else None
     if view["pending_action"] == "defend":
         if difficulty == "easy":
             return random.choice([me_seat, *others])
         mine = me["defense"]["value"] if me["defense"] else 0
-        if drawn > mine:
-            return me_seat
-        # Une carte faible : on l'impose à la défense la plus solide en face.
-        return max(others, key=lambda s: view["players"][s]["defense"]["value"])
+        if known is not None:
+            return me_seat if known > mine else _sturdiest(view, others)
+        # Carte inconnue (7 en moyenne) : on se répare si on est fragile, sinon on
+        # tente d'affaiblir la défense la plus solide en face.
+        return me_seat if mine < 8 else _sturdiest(view, others)
     if difficulty == "easy":
         return random.choice(others)
+    # Attaque : carte inconnue estimée à 7, chaque charge (jamais vue) à 7 aussi.
+    expected = (known if known is not None else 7) + 7 * me["charges"]
 
-    # Attaque : on ne voit pas ses propres charges, on estime avec la carte seule.
-    # Priorité à une cible qu'on peut tuer, sinon celle qui encaisse le plus.
     def damage(seat: int) -> int:
-        p = view["players"][seat]
-        return max(0, drawn - p["defense"]["value"])
+        return max(0, expected - view["players"][seat]["defense"]["value"])
 
     killable = [s for s in others if 0 < view["players"][s]["life_total"] <= damage(s)]
     if killable:
         return min(killable, key=lambda s: view["players"][s]["life_total"])
     return max(others, key=lambda s: (damage(s), -view["players"][s]["life_total"]))
+
+
+def _sturdiest(view: dict, seats: list[int]) -> int:
+    return max(seats, key=lambda s: view["players"][s]["defense"]["value"])
 
 
 def _choose_suit(view: dict, difficulty: str) -> Suit:

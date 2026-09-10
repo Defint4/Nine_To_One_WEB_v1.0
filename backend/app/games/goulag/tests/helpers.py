@@ -51,10 +51,4 @@ def playing_state(
 
 
 def total_cards(state: GameState) -> int:
-    """Toutes les cartes, y compris celle en main pendant le choix de la cible."""
-    return (
-        sum(p.card_count for p in state.players)
-        + len(state.draw_pile)
-        + len(state.discard)
-        + (1 if state.drawn else 0)
-    )
+    return sum(p.card_count for p in state.players) + len(state.draw_pile) + len(state.discard)
