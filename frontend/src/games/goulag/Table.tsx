@@ -595,7 +595,12 @@ function Stage({ stage, seats }: { stage: StageFx | null; seats: number }) {
               aria-hidden
               initial={{ opacity: 0, scale: 0.6 }}
               animate={{ opacity: [0.7, 1, 0.7], scale: 1 }}
-              exit={{ opacity: 0 }}
+              // La sortie a sa propre transition : sinon elle hérite du battement
+              // infini et le halo ne s'éteint jamais.
+              exit={{
+                opacity: 0,
+                transition: { duration: 0.45, repeat: 0 },
+              }}
               transition={{
                 opacity: { repeat: Infinity, duration: 1.6 },
                 scale: { duration: 0.5 },
