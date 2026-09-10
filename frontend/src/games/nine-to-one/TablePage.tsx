@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { LayoutGroup, motion } from "motion/react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -24,7 +24,7 @@ import {
 } from "@/lib/prefs";
 import { preloadCards } from "@/lib/preloadCards";
 import { isMuted, preloadSounds, setMuted } from "@/lib/sound";
-import { BOT_LABELS, type BotDifficulty } from "@/lib/types";
+import { BOT_LABELS, type BotDifficulty, type CardT } from "@/lib/types";
 import GameTable from "./GameTable";
 import { GAME } from "./meta";
 import { useNineToOneSocket, type NineToOneSocket } from "./socket";
@@ -440,43 +440,49 @@ function Lobby({ socket, view }: { socket: NineToOneSocket; view: RoomView }) {
             ? "Avant de te déclarer prêt, échange librement ta main avec tes cartes visibles."
             : "Tes cartes sont verrouillées, on attend les autres."}
         </p>
-        <div className="rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
-          <p className="mb-1 text-xs text-ivory-dim/70">Cartes visibles sur la table</p>
-          <div className="flex gap-2">
-            {you.face_up.map((card, i) => (
-              <PlayingCard
-                key={`${card.value}-${card.suit}`}
-                card={card}
-                size="md"
-                disabled={!canSwap}
-                highlighted={canSwap && selectedHand !== null}
-                onClick={
-                  canSwap
-                    ? () => {
-                        if (selectedHand !== null) {
-                          socket.swap(selectedHand, i);
-                          setSelectedHand(null);
-                        }
-                      }
-                    : undefined
-                }
-              />
-            ))}
+        <LayoutGroup id="swap">
+          <div className="rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
+            <p className="mb-1 text-xs text-ivory-dim/70">Cartes visibles sur la table</p>
+            <div className="flex gap-2">
+              {you.face_up.map((card, i) => (
+                <SwapCard key={`${card.value}-${card.suit}`} card={card}>
+                  <PlayingCard
+                    card={card}
+                    size="md"
+                    disabled={!canSwap}
+                    highlighted={canSwap && selectedHand !== null}
+                    onClick={
+                      canSwap
+                        ? () => {
+                            if (selectedHand !== null) {
+                              socket.swap(selectedHand, i);
+                              setSelectedHand(null);
+                            }
+                          }
+                        : undefined
+                    }
+                  />
+                </SwapCard>
+              ))}
+            </div>
+            <p className="mb-1 mt-3 text-xs text-ivory-dim/70">Ta main</p>
+            <div className="flex gap-2">
+              {(you.hand ?? []).map((card, i) => (
+                <SwapCard key={`${card.value}-${card.suit}`} card={card}>
+                  <PlayingCard
+                    card={card}
+                    size="md"
+                    disabled={!canSwap}
+                    selected={selectedHand === i}
+                    onClick={
+                      canSwap ? () => setSelectedHand(selectedHand === i ? null : i) : undefined
+                    }
+                  />
+                </SwapCard>
+              ))}
+            </div>
           </div>
-          <p className="mb-1 mt-3 text-xs text-ivory-dim/70">Ta main</p>
-          <div className="flex gap-2">
-            {(you.hand ?? []).map((card, i) => (
-              <PlayingCard
-                key={`${card.value}-${card.suit}`}
-                card={card}
-                size="md"
-                disabled={!canSwap}
-                selected={selectedHand === i}
-                onClick={canSwap ? () => setSelectedHand(selectedHand === i ? null : i) : undefined}
-              />
-            ))}
-          </div>
-        </div>
+        </LayoutGroup>
       </section>
 
       <button
@@ -491,6 +497,21 @@ function Lobby({ socket, view }: { socket: NineToOneSocket; view: RoomView }) {
 
       <LobbyChat socket={socket} view={view} />
     </div>
+  );
+}
+
+/* Une carte de l'échange initial : même `layoutId` dans les deux rangées, donc quand
+   le serveur renvoie la main et les visibles échangées, chaque carte glisse de son
+   ancienne place à la nouvelle (et la main re-triée se réordonne en douceur). */
+function SwapCard({ card, children }: { card: CardT; children: React.ReactNode }) {
+  return (
+    <motion.div
+      layout
+      layoutId={`swap-${card.value}-${card.suit}`}
+      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
