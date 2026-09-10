@@ -42,7 +42,7 @@ est alors mélangée et devient la pioche.
 **Mort.** À zéro, les vies partent à la défausse et le mort choisit une couleur. On
 retourne la carte du dessus : bonne couleur, il revit avec cette carte pour seule vie (sa
 défense reste). Sinon, seconde et dernière chance avec la même couleur : on coupe la pioche
-et on retourne la carte du milieu. Bonne couleur, il revit avec ; sinon il est éliminé.
+et on retourne la carte du milieu. Bonne couleur, il revit avec ; sinon il est éliminé et sa défense rejoint la défausse.
 Le jeu continue sans lui, le tour passe au voisin de l'attaquant.
 
 **Œil de faucon.** Un joueur dont la vie n'est plus qu'un As seul voit la carte du dessus
@@ -52,8 +52,8 @@ avant d'annoncer son action.
 
 - Annonce puis cible, le tout à l'aveugle ; la carte est piochée et révélée ensuite (seul
   l'œil de faucon la connaît d'avance).
-- Une attaque qui touche les vies fait perdre ses charges au défenseur ; les charges d'un
-  joueur éliminé vont à la défausse.
+- Une attaque qui touche les vies fait perdre ses charges au défenseur ; la défense et les
+  charges d'un joueur éliminé vont à la défausse (elles reviennent en jeu).
 - S'il n'existe aucune carte de la valeur exacte à recomposer, deux cartes qui font la
   somme ; s'il n'existe aucune combinaison (les quatre As déjà en jeu alors qu'il faut 1),
   la plus petite carte au-dessus, au bénéfice du blessé (événement `lives_rounded_up`).

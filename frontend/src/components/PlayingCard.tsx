@@ -41,6 +41,7 @@ const SIZES = {
   xxs: { w: "w-5", radius: "rounded-[3px]", back: "text-[6px]", idx: "" },
   xs: { w: "w-6", radius: "rounded-[3px]", back: "text-[6px]", idx: "" },
   sm: { w: "w-9", radius: "rounded", back: "text-[8px]", idx: "text-[8px]" },
+  ms: { w: "w-11", radius: "rounded", back: "text-[9px]", idx: "text-[9px]" },
   md: {
     w: "w-14",
     radius: "rounded-md",

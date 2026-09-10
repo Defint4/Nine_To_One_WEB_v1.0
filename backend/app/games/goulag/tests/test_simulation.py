@@ -54,6 +54,8 @@ def run_random_game(seed: int, num_players: int) -> None:
         for p in state.players:
             if p.alive and state.phase is not Phase.REVIVAL:
                 assert p.life_total > 0 and p.defense is not None
+            if not p.alive and p.finish_rank != 1:
+                assert p.card_count == 0, "un éliminé ne garde aucune carte"
 
     assert state.status is GameStatus.FINISHED, f"partie non terminée (seed={seed})"
     ranks = sorted(p.finish_rank for p in state.players)

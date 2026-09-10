@@ -98,22 +98,22 @@ const PLACES: Record<number, [number, number][]> = {
     [74, 22],
   ],
   3: [
-    [25, 44],
+    [27, 44],
     [50, 12],
-    [75, 44],
+    [73, 44],
   ],
   4: [
-    [25, 56],
-    [27, 16],
-    [73, 16],
-    [75, 56],
+    [27, 56],
+    [28, 16],
+    [72, 16],
+    [73, 56],
   ],
   5: [
-    [25, 62],
-    [26, 32],
+    [27, 62],
+    [28, 32],
     [50, 10],
-    [74, 32],
-    [75, 62],
+    [72, 32],
+    [73, 62],
   ],
 };
 
@@ -196,7 +196,7 @@ function OpponentSeat({
           } ${dead ? "opacity-45 grayscale" : ""}`}
         >
           <SeatHeader player={player} active={active} size="md" />
-          <Mat player={player} size="sm" />
+          <Mat player={player} size="ms" />
         </button>
       </SeatEffects>
     </div>
@@ -302,11 +302,45 @@ function SeatHeader({
   );
 }
 
-/* Le tapis d'un joueur : bouclier couché, deux vies, charges. Chaque carte a sa
-   propre inclinaison, comme posée sur la table et vue de ta place. */
-function Mat({ player, size }: { player: PlayerView; size: "sm" | "md" }) {
+/* Le tapis d'un joueur : bouclier couché, deux vies, charges. Pas de rotation 3D
+   sur les cartes posées : sur téléphone le navigateur les rastérise alors en
+   texture et elles deviennent floues. Le relief vient des ombres et des légers
+   angles ; la 3D est réservée aux cartes qui bougent. */
+type MatSize = "ms" | "md";
+
+const DIM: Record<
+  MatSize,
+  {
+    w: string;
+    h: string;
+    shieldW: string;
+    shieldH: string;
+    overlap: string;
+    badge: string;
+  }
+> = {
+  ms: {
+    w: "w-11",
+    h: "h-[4.125rem]",
+    shieldW: "w-[4.125rem]",
+    shieldH: "h-11",
+    overlap: "-ml-3.5",
+    badge: "text-xs",
+  },
+  md: {
+    w: "w-14",
+    h: "h-[5.25rem]",
+    shieldW: "w-[5.25rem]",
+    shieldH: "h-14",
+    overlap: "-ml-4",
+    badge: "text-sm",
+  },
+};
+
+function Mat({ player, size }: { player: PlayerView; size: MatSize }) {
   const dead = !player.alive;
   const lifeCards = player.lives;
+  const d = DIM[size];
   return (
     <div className="flex items-end gap-1">
       {player.defense && (
@@ -317,9 +351,37 @@ function Mat({ player, size }: { player: PlayerView; size: "sm" | "md" }) {
           dimmed={dead}
         />
       )}
-      <div className="relative flex flex-col items-center">
+      <div className="relative">
+        {/* Les charges, glissées derrière les vies en haut à droite : le tapis reste
+            étroit, deux tapis tiennent côte à côte sur un téléphone. */}
         <div
-          className="flex [perspective:500px]"
+          className="absolute -right-5 -top-5 z-0"
+          ref={registerAnchor(`charges-${player.seat}`)}
+          aria-label={
+            player.charges
+              ? `${player.charges} charge${player.charges > 1 ? "s" : ""}`
+              : undefined
+          }
+        >
+          {Array.from({ length: player.charges }, (_, i) => (
+            <span
+              key={i}
+              className={i === 0 ? "block" : "absolute left-0 top-0"}
+              style={{
+                transform: `translate(${i * 5}px, ${-i * 4}px) rotateZ(${i ? 14 : 8}deg)`,
+              }}
+            >
+              <PlayingCard faceDown size={size} />
+            </span>
+          ))}
+          {player.charges > 0 && (
+            <span className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-gold px-1.5 text-[11px] font-extrabold leading-4 tracking-wide text-ink ring-1 ring-black/30">
+              {player.charges === 1 ? "1 charge" : `${player.charges} charges`}
+            </span>
+          )}
+        </div>
+        <div
+          className="relative z-10 flex"
           ref={registerAnchor(`lives-${player.seat}`)}
         >
           {lifeCards.map((card, i) => (
@@ -329,66 +391,31 @@ function Mat({ player, size }: { player: PlayerView; size: "sm" | "md" }) {
           ))}
           {lifeCards.length === 0 && (
             <span
-              className={`${size === "sm" ? "h-[3.375rem] w-9" : "h-[5.25rem] w-14"} rounded border border-dashed border-ivory-dim/40`}
+              className={`${d.h} ${d.w} rounded border border-dashed border-ivory-dim/40`}
             />
           )}
         </div>
         <LifeBadge total={player.life_total} alive={player.alive} size={size} />
       </div>
-      {player.charges > 0 ? (
-        <div
-          className="relative flex flex-col items-center [perspective:500px]"
-          aria-label={`${player.charges} charge${player.charges > 1 ? "s" : ""}`}
-        >
-          <div
-            className="relative"
-            ref={registerAnchor(`charges-${player.seat}`)}
-          >
-            {Array.from({ length: player.charges }, (_, i) => (
-              <span
-                key={i}
-                className={`drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)] ${i === 0 ? "block" : "absolute left-0 top-0"}`}
-                style={{
-                  transform: `translate(${i * 4}px, ${-i * 4}px) rotateX(14deg) rotateZ(${i ? 8 : -3}deg)`,
-                }}
-              >
-                <PlayingCard faceDown size={size} />
-              </span>
-            ))}
-          </div>
-          <span className="-mt-1.5 rounded-full bg-gold px-1.5 text-[11px] font-extrabold leading-4 tracking-wide text-ink ring-1 ring-black/30">
-            {player.charges === 1 ? "1 charge" : `${player.charges} charges`}
-          </span>
-        </div>
-      ) : (
-        // L'emplacement des charges, invisible : la cible du vol quand on charge.
-        <span
-          aria-hidden
-          ref={registerAnchor(`charges-${player.seat}`)}
-          className={`${size === "sm" ? "h-[3.375rem] w-9" : "h-[5.25rem] w-14"} shrink-0`}
-        />
-      )}
     </div>
   );
 }
 
-/* Une carte posée à plat, vue d'en face : légèrement inclinée, avec son ombre. */
+/* Une carte posée à plat : un léger angle et son ombre, rien de plus. */
 function Laid({
   index,
   size,
   children,
 }: {
   index: number;
-  size: "sm" | "md";
+  size: MatSize;
   children: React.ReactNode;
 }) {
-  const overlap = index === 0 ? "" : size === "sm" ? "-ml-3" : "-ml-4";
+  const overlap = index === 0 ? "" : DIM[size].overlap;
   return (
     <span
-      className={`block ${overlap} drop-shadow-[0_6px_6px_rgba(0,0,0,0.35)]`}
-      style={{
-        transform: `rotateX(14deg) rotateZ(${index === 0 ? -4 : 4}deg)`,
-      }}
+      className={`block ${overlap}`}
+      style={{ transform: `rotateZ(${index === 0 ? -4 : 4}deg)` }}
     >
       {children}
     </span>
@@ -404,26 +431,23 @@ function Shield({
 }: {
   seat: number;
   card: CardT;
-  size: "sm" | "md";
+  size: MatSize;
   dimmed: boolean;
 }) {
-  const w = size === "sm" ? "w-[3.375rem]" : "w-[5.25rem]";
-  const h = size === "sm" ? "h-9" : "h-14";
+  const d = DIM[size];
   return (
     <div
-      className={`relative ${w} ${h} shrink-0 [perspective:500px]`}
+      className={`relative ${d.shieldW} ${d.shieldH} shrink-0`}
       ref={registerAnchor(`shield-${seat}`)}
     >
       <span
-        className="absolute left-1/2 top-1/2 block drop-shadow-[0_5px_5px_rgba(0,0,0,0.4)]"
-        style={{
-          transform: "translate(-50%, -50%) rotateX(14deg) rotateZ(-90deg)",
-        }}
+        className="absolute left-1/2 top-1/2 block"
+        style={{ transform: "translate(-50%, -50%) rotateZ(-90deg)" }}
       >
         <PlayingCard card={face(card)} size={size} />
       </span>
       <span
-        className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-ink px-1.5 text-[10px] font-extrabold leading-4 text-ivory ring-1 ring-white/25 ${
+        className={`absolute -bottom-1.5 left-1/2 z-10 -translate-x-1/2 rounded-full bg-ink px-1.5 text-[10px] font-extrabold leading-4 text-ivory ring-1 ring-white/25 ${
           dimmed ? "opacity-60" : ""
         }`}
       >
@@ -440,14 +464,18 @@ function LifeBadge({
 }: {
   total: number;
   alive: boolean;
-  size: "sm" | "md";
+  size: MatSize;
 }) {
   const low = alive && total <= 3;
   return (
     <span
-      className={`-mt-1.5 rounded-full px-2 font-extrabold leading-5 ring-1 ring-white/20 ${
-        size === "sm" ? "text-xs" : "text-sm"
-      } ${!alive ? "bg-black/60 text-ivory-dim/70" : low ? "bg-card-red text-ivory" : "bg-ink text-gold"}`}
+      className={`absolute -bottom-2 left-1/2 z-20 -translate-x-1/2 rounded-full px-2 font-extrabold leading-5 ring-1 ring-white/20 ${DIM[size].badge} ${
+        !alive
+          ? "bg-black/60 text-ivory-dim/70"
+          : low
+            ? "bg-card-red text-ivory"
+            : "bg-ink text-gold"
+      }`}
     >
       {alive ? total : "†"}
     </span>
@@ -467,7 +495,10 @@ function Piles({ view, center }: { view: RoomView; center: CenterFx }) {
   return (
     <div className="pointer-events-none absolute left-1/2 top-[84%] flex -translate-x-1/2 -translate-y-1/2 items-end gap-5 [perspective:600px]">
       <div className="relative flex flex-col items-center">
-        <div className="relative h-[3.375rem] w-9" ref={registerAnchor("deck")}>
+        <div
+          className="relative h-[4.125rem] w-11"
+          ref={registerAnchor("deck")}
+        >
           {[2, 1, 0].map((i) => (
             <motion.span
               key={i}
@@ -475,13 +506,12 @@ function Piles({ view, center }: { view: RoomView; center: CenterFx }) {
               animate={{
                 // La coupe : la moitié du dessus glisse sur le côté, le temps de prendre
                 // la carte du milieu.
-                x: center.split && i < 1 ? 26 : 0,
+                x: center.split && i < 1 ? 30 : 0,
                 y: -i * 2 + (center.split && i < 1 ? -8 : 0),
               }}
-              style={{ transform: "rotateX(14deg)" }}
               transition={{ type: "spring", stiffness: 300, damping: 24 }}
             >
-              <PlayingCard faceDown size="sm" />
+              <PlayingCard faceDown size="ms" />
             </motion.span>
           ))}
           <AnimatePresence>
@@ -509,15 +539,15 @@ function Piles({ view, center }: { view: RoomView; center: CenterFx }) {
       </div>
       <div className="relative flex flex-col items-center">
         <div
-          className="relative h-[3.375rem] w-9"
+          className="relative h-[4.125rem] w-11"
           ref={registerAnchor("discard")}
         >
           {view.discard_top ? (
             <span
-              className="absolute left-0 top-0 block drop-shadow-[0_4px_4px_rgba(0,0,0,0.35)]"
-              style={{ transform: "rotateX(14deg) rotateZ(6deg)" }}
+              className="absolute left-0 top-0 block"
+              style={{ transform: "rotateZ(6deg)" }}
             >
-              <PlayingCard card={face(view.discard_top)} size="sm" />
+              <PlayingCard card={face(view.discard_top)} size="ms" />
             </span>
           ) : (
             <span className="block h-full w-full rounded border border-dashed border-ivory-dim/30" />
@@ -631,12 +661,7 @@ function YourZone({
                   <span className="mb-1 text-[10px] font-bold text-gold">
                     Tu vois
                   </span>
-                  <span
-                    style={{ transform: "rotateX(10deg)" }}
-                    className="[perspective:300px]"
-                  >
-                    <PlayingCard card={face(view.peek)} size="sm" />
-                  </span>
+                  <PlayingCard card={face(view.peek)} size="ms" />
                 </div>
               )}
               <ActionButton
@@ -667,12 +692,7 @@ function YourZone({
               exit={{ opacity: 0, y: 10 }}
               className="flex items-center gap-3 rounded-2xl bg-black/30 p-3 ring-1 ring-white/10"
             >
-              <span
-                className="[perspective:300px]"
-                style={{ transform: "rotateX(10deg)" }}
-              >
-                <PlayingCard faceDown size="md" />
-              </span>
+              <PlayingCard faceDown size="md" />
               <p className="text-sm font-semibold text-ivory-dim">
                 {view.pending_action === "attack"
                   ? `Tu attaques${you.charges ? ` avec ${you.charges} charge${you.charges > 1 ? "s" : ""}` : ""}. Touche un adversaire, la carte sera retournée ensuite.`

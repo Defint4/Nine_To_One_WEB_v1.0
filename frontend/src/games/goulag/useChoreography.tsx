@@ -125,7 +125,8 @@ export function useChoreography(
     ) {
       const me = before.your_seat;
       // Les cartes volent à la taille de leur destination : petites vers un adversaire.
-      const sizeFor = (seat: number): "sm" | "md" => (seat === me ? "md" : "sm");
+      const sizeFor = (seat: number): "ms" | "md" =>
+        seat === me ? "md" : "ms";
       for (const e of events) {
         switch (e.type) {
           case "charged": {
@@ -212,7 +213,7 @@ export function useChoreography(
               spawnFlight({
                 from: `shield-${target}`,
                 to: "discard",
-                content: <PlayingCard card={c} size="sm" />,
+                content: <PlayingCard card={c} size="ms" />,
                 delay: 0.3 + i * 0.07,
                 duration: 0.4,
               }),
@@ -227,7 +228,7 @@ export function useChoreography(
               spawnFlight({
                 from: `charges-${seat}`,
                 to: "discard",
-                content: <PlayingCard faceDown size="sm" />,
+                content: <PlayingCard faceDown size="ms" />,
                 delay: i * 0.08,
                 duration: 0.45,
               });
@@ -243,7 +244,7 @@ export function useChoreography(
               spawnFlight({
                 from: `lives-${seat}`,
                 to: "discard",
-                content: <PlayingCard card={c} size="sm" />,
+                content: <PlayingCard card={c} size="ms" />,
                 delay: i * 0.08,
                 duration: 0.4,
               }),
@@ -270,7 +271,7 @@ export function useChoreography(
               spawnFlight({
                 from: `shield-${target}`,
                 to: "discard",
-                content: <PlayingCard card={face(old)} size="sm" />,
+                content: <PlayingCard card={face(old)} size="ms" />,
                 duration: 0.4,
               });
             }
@@ -351,7 +352,12 @@ export function useChoreography(
             spawnFlight({
               from: "deck",
               to: success ? `lives-${seat}` : "discard",
-              content: <PlayingCard card={card} size={success ? sizeFor(seat) : "sm"} />,
+              content: (
+                <PlayingCard
+                  card={card}
+                  size={success ? sizeFor(seat) : "sm"}
+                />
+              ),
               duration: 0.5,
             });
             await wait(520);
@@ -370,6 +376,17 @@ export function useChoreography(
           }
           case "eliminated": {
             const seat = e.player as number;
+            const defense = e.defense as CardT | null;
+            if (defense) {
+              // Son bouclier retourne en jeu : il glisse à la défausse.
+              spawnFlight({
+                from: `shield-${seat}`,
+                to: "discard",
+                content: <PlayingCard card={face(defense)} size="ms" />,
+                delay: 0.2,
+                duration: 0.5,
+              });
+            }
             seatFx(seat, {
               flash: "death",
               popup: { id: ++popupId, text: "Éliminé", tone: "damage" },

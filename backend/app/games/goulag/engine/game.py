@@ -26,8 +26,8 @@ Règles (docs/goulag/README.md) et arbitrages retenus :
   (sa défense reste en place ; ses charges sont déjà perdues, l'attaque a touché ses
   vies). Sinon on coupe la pioche et on retourne la carte
   du milieu, même couleur ; bonne → il revit avec ; sinon éliminé. Les cartes
-  retournées ratées et ses charges vont à la défausse. Le tour suivant est celui du
-  voisin de l'attaquant : personne ne saute son tour.
+  retournées ratées, sa défense et ses charges vont à la défausse. Le tour suivant
+  est celui du voisin de l'attaquant : personne ne saute son tour.
 - Premier joueur : plus petite défense, puis moins de vies, puis tirage au sort.
 """
 
@@ -369,7 +369,12 @@ def _revive(state: GameState, player_index: int, card: Card) -> list[Event]:
 
 
 def _eliminate(state: GameState, player_index: int) -> list[Event]:
+    """Le joueur sort : ce qu'il lui restait (défense, charges) retourne en jeu."""
     player = state.players[player_index]
+    defense = player.defense
+    if defense is not None:
+        state.discard.append(defense)
+    player.defense = None
     state.discard.extend(player.charges)
     player.charges = []
     state.eliminated += 1
@@ -377,7 +382,12 @@ def _eliminate(state: GameState, player_index: int) -> list[Event]:
     state.phase = Phase.ACTION
     state.reviving = None
     events: list[Event] = [
-        {"type": "eliminated", "player": player_index, "rank": player.finish_rank}
+        {
+            "type": "eliminated",
+            "player": player_index,
+            "rank": player.finish_rank,
+            "defense": defense.to_dict() if defense else None,
+        }
     ]
     alive = state.alive_indices()
     if len(alive) == 1:

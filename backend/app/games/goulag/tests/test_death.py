@@ -80,11 +80,16 @@ def test_two_failures_eliminate_and_discard_charges():
     state = lethal_state([card(3, D), card(7, C), card(9, H), card(5, C), card(13, C)])
     kill(state)
     events = choose_suit(state, 0, Suit.SPADES)
-    assert events[-2] == {"type": "eliminated", "player": 0, "rank": 3}
+    assert events[-2] == {
+        "type": "eliminated",
+        "player": 0,
+        "rank": 3,
+        "defense": card(1, S).to_dict(),
+    }
     assert events[-1] == {"type": "turn", "player": 2}
     p = state.players[0]
-    assert not p.alive and p.lives == [] and p.charges == []
-    assert card(4, C) in state.discard
+    assert not p.alive and p.lives == [] and p.charges == [] and p.defense is None
+    assert card(4, C) in state.discard and card(1, S) in state.discard  # tout retourne en jeu
     assert state.status is GameStatus.PLAYING
     assert total_cards(state) == 5 + 4 + 3 + 3  # rien ne disparaît
 
