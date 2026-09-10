@@ -9,7 +9,12 @@ import SettingsSheet from "@/components/SettingsSheet";
 import { joinRoom } from "@/lib/api";
 import type { GameMeta } from "@/lib/games";
 import { tablePath } from "@/lib/games";
-import { currentProfile, forgetTable, rememberTable, type StoredProfile } from "@/lib/identity";
+import {
+  currentProfile,
+  forgetTable,
+  rememberTable,
+  type StoredProfile,
+} from "@/lib/identity";
 import { applyFelt } from "@/lib/prefs";
 import { preloadCards } from "@/lib/preloadCards";
 import { preloadSounds } from "@/lib/sound";
@@ -31,9 +36,10 @@ type Props<V extends BaseRoomView, S extends RoomSocket<V>> = {
   preload?: () => Promise<unknown>;
 };
 
-export default function TableFrame<V extends BaseRoomView, S extends RoomSocket<V>>(
-  props: Props<V, S>
-) {
+export default function TableFrame<
+  V extends BaseRoomView,
+  S extends RoomSocket<V>,
+>(props: Props<V, S>) {
   const { game, preload } = props;
   const { code } = useParams<{ code: string }>();
   const router = useRouter();
@@ -60,7 +66,9 @@ export default function TableFrame<V extends BaseRoomView, S extends RoomSocket<
       })
       .catch((e) => {
         forgetTable(game.slug);
-        setJoinError(e instanceof Error ? e.message : "Impossible de rejoindre.");
+        setJoinError(
+          e instanceof Error ? e.message : "Impossible de rejoindre.",
+        );
       });
   }, [code, router, game.slug]);
 
@@ -97,7 +105,8 @@ export default function TableFrame<V extends BaseRoomView, S extends RoomSocket<
   }, []);
 
   if (joinError) return <Blocked game={game} message={joinError} />;
-  if (!profile || !joined) return <LoadingScreen label="Connexion à la table…" />;
+  if (!profile || !joined)
+    return <LoadingScreen label="Connexion à la table…" />;
   if (!assetsReady) return <LoadingScreen label="On sort les cartes…" />;
   return <Room {...props} code={code} token={profile.token} />;
 }
@@ -124,7 +133,15 @@ function Room<V extends BaseRoomView, S extends RoomSocket<V>>({
     }
   }, [rematchCode, router, game.slug]);
 
-  if (socket.closedReason) return <Blocked game={game} message={socket.closedReason} />;
+  const finished = socket.view?.status === "finished";
+  useEffect(() => {
+    // Partie terminée : plus rien à reprendre depuis l'accueil (la revanche est une
+    // nouvelle table, mémorisée à son tour).
+    if (finished) forgetTable(game.slug);
+  }, [finished, game.slug]);
+
+  if (socket.closedReason)
+    return <Blocked game={game} message={socket.closedReason} />;
   const view = socket.view;
   if (!view) return <LoadingScreen label="Connexion à la table…" />;
   const inLobby = view.status === "lobby";
@@ -141,7 +158,9 @@ function Room<V extends BaseRoomView, S extends RoomSocket<V>>({
       </button>
 
       {inLobby ? (
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-5">{lobby(socket, view)}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 pt-5">
+          {lobby(socket, view)}
+        </div>
       ) : (
         <div className="min-h-0 flex-1">{table(socket, view)}</div>
       )}
@@ -170,7 +189,10 @@ function Room<V extends BaseRoomView, S extends RoomSocket<V>>({
 
 function GearIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="size-5 fill-none stroke-current stroke-2">
+    <svg
+      viewBox="0 0 24 24"
+      className="size-5 fill-none stroke-current stroke-2"
+    >
       <circle cx="12" cy="12" r="3" />
       <path
         strokeLinecap="round"
@@ -180,11 +202,20 @@ function GearIcon() {
   );
 }
 
-export function Blocked({ game, message }: { game: GameMeta; message: string }) {
+export function Blocked({
+  game,
+  message,
+}: {
+  game: GameMeta;
+  message: string;
+}) {
   return (
     <div className="flex h-full flex-col items-center justify-center overflow-y-auto px-6 text-center text-ivory-dim">
       <p className="font-bold text-ivory">{message}</p>
-      <Link href={game.path} className="mt-4 rounded-2xl bg-gold px-6 py-3 font-extrabold text-ink">
+      <Link
+        href={game.path}
+        className="mt-4 rounded-2xl bg-gold px-6 py-3 font-extrabold text-ink"
+      >
         Retour à l&rsquo;accueil
       </Link>
     </div>

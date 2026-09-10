@@ -146,7 +146,14 @@ export function useChoreography(
             const target = e.target as number;
             const card = face(e.card as CardT);
             const attack = e.action === "attack";
-            // La carte se retourne sur la pioche, puis file vers le bouclier visé.
+            // Les charges jouées : leurs valeurs arrivent dans l'événement d'attaque qui
+            // suit ; elles se retournent sur place en même temps que la carte piochée.
+            const attackEvent = attack
+              ? events.find((x) => x.type === "attacked" && x.player === seat)
+              : undefined;
+            const charges = (
+              (attackEvent?.charges as CardT[] | undefined) ?? []
+            ).map(face);
             sfx.flip();
             spawnFlight({
               from: "deck",
@@ -155,7 +162,23 @@ export function useChoreography(
               duration: 0.55,
               still: true,
             });
-            await wait(560);
+            charges.forEach((c, i) =>
+              spawnFlight({
+                from: `charges-${seat}`,
+                to: `charges-${seat}`,
+                content: (
+                  <FlipCard
+                    card={c}
+                    size={sizeFor(seat)}
+                    duration={0.45}
+                    delay={0.1 * i}
+                  />
+                ),
+                duration: 0.55 + 0.1 * i,
+                still: true,
+              }),
+            );
+            await wait(560 + 100 * charges.length);
             sfx.pickup();
             spawnFlight({
               from: "deck",
@@ -163,19 +186,16 @@ export function useChoreography(
               content: <PlayingCard card={card} size={sizeFor(target)} />,
               duration: 0.45,
             });
-            if (attack) {
-              const charges = before.players[seat]?.charges ?? 0;
-              for (let i = 0; i < charges; i++) {
-                spawnFlight({
-                  from: `charges-${seat}`,
-                  to: `shield-${target}`,
-                  content: <PlayingCard faceDown size={sizeFor(target)} />,
-                  delay: 0.08 * (i + 1),
-                  duration: 0.45,
-                });
-              }
-            }
-            await wait(470);
+            charges.forEach((c, i) =>
+              spawnFlight({
+                from: `charges-${seat}`,
+                to: `shield-${target}`,
+                content: <PlayingCard card={c} size={sizeFor(target)} />,
+                delay: 0.08 * (i + 1),
+                duration: 0.45,
+              }),
+            );
+            await wait(470 + 80 * charges.length);
             break;
           }
           case "attacked": {

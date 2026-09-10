@@ -13,7 +13,7 @@ export default function FlipCard({
   duration = 0.5,
 }: {
   card: CardT;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "ms" | "md" | "lg";
   delay?: number;
   duration?: number;
 }) {

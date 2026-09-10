@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
+import { useState } from "react";
 import Avatar from "@/components/Avatar";
 import FlipCard from "@/components/FlipCard";
 import PlayingCard from "@/components/PlayingCard";
@@ -42,6 +43,15 @@ export default function Table({
     targeting && p.alive && (view.pending_action === "defend" || p.seat !== me);
   const active =
     view.status === "playing" ? (view.reviving ?? view.turn) : null;
+  // Le choix de couleur se ferme dès qu'on a touché une couleur, pour laisser voir le
+  // retournement ; il ne revient que si le serveur redemande une couleur.
+  const [suitPicked, setSuitPicked] = useState(false);
+  const [askedBefore, setAskedBefore] = useState(view.must_choose_suit);
+  if (askedBefore !== view.must_choose_suit) {
+    // Nouvelle demande (ou fin de demande) : on repart de zéro.
+    setAskedBefore(view.must_choose_suit);
+    setSuitPicked(false);
+  }
 
   return (
     <div className="relative flex h-full flex-col">
@@ -75,8 +85,13 @@ export default function Table({
         fx={fx.seats[me]}
       />
 
-      {view.must_choose_suit && (
-        <SuitPicker onPick={(suit) => socket.chooseSuit(suit)} />
+      {view.must_choose_suit && !suitPicked && (
+        <SuitPicker
+          onPick={(suit) => {
+            setSuitPicked(true);
+            socket.chooseSuit(suit);
+          }}
+        />
       )}
       {view.status === "finished" && <Results view={view} socket={socket} />}
     </div>
@@ -256,7 +271,7 @@ function SeatEffects({
             animate={{ opacity: 1, y: -18, scale: 1 }}
             exit={{ opacity: 0, y: -34 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className={`pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 rounded-full px-3 py-0.5 text-lg font-extrabold shadow-card ${popupClass[fx.popup.tone]}`}
+            className={`pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-0.5 text-lg font-extrabold shadow-card ${popupClass[fx.popup.tone]}`}
           >
             {fx.popup.text}
           </motion.span>
