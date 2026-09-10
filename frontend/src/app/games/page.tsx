@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
-import PlayingCard from "@/components/PlayingCard";
+import PlayingCard, { CardBackLabel } from "@/components/PlayingCard";
 import { fetchMe } from "@/lib/api";
 import { GAMES, type GameMeta } from "@/lib/games";
 import { currentProfile, signOut, type StoredProfile } from "@/lib/identity";
@@ -75,7 +75,15 @@ export default function Page() {
   );
 }
 
-function GameTile({ game, index, stats }: { game: GameMeta; index: number; stats?: GameStats }) {
+function GameTile({
+  game,
+  index,
+  stats,
+}: {
+  game: GameMeta;
+  index: number;
+  stats?: GameStats;
+}) {
   const body = (
     <div
       className={`relative flex min-h-[11rem] items-end overflow-hidden rounded-3xl p-5 shadow-card ring-1 ring-white/10 ${
@@ -89,23 +97,33 @@ function GameTile({ game, index, stats }: { game: GameMeta; index: number; stats
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(160deg,rgba(255,255,255,0.08),transparent_45%)]"
       />
       <div className="relative z-10 flex flex-col gap-1 pr-28">
-        <h2 className="text-3xl font-extrabold leading-none tracking-tight">{game.name}</h2>
-        <p className="text-sm font-semibold text-ivory-dim/85">{game.players}</p>
-        <p className="mt-1 text-sm leading-snug text-ivory-dim/80">{game.tagline}</p>
+        <h2 className="text-3xl font-extrabold leading-none tracking-tight">
+          {game.name}
+        </h2>
+        <p className="text-sm font-semibold text-ivory-dim/85">
+          {game.players}
+        </p>
+        <p className="mt-1 text-sm leading-snug text-ivory-dim/80">
+          {game.tagline}
+        </p>
         {game.available ? (
           stats && stats.played > 0 ? (
             <p className="mt-2 text-xs font-semibold text-gold/90">
-              {stats.played} {stats.played > 1 ? "parties" : "partie"}, {stats.won}{" "}
-              {stats.won > 1 ? "gagnées" : "gagnée"}
+              {stats.played} {stats.played > 1 ? "parties" : "partie"},{" "}
+              {stats.won} {stats.won > 1 ? "gagnées" : "gagnée"}
             </p>
           ) : (
             <p className="mt-2 text-xs font-semibold text-gold/90">Jouer</p>
           )
         ) : (
-          <p className="mt-2 text-xs font-semibold text-ivory-dim/70">Bientôt</p>
+          <p className="mt-2 text-xs font-semibold text-ivory-dim/70">
+            Bientôt
+          </p>
         )}
       </div>
-      <Illustration slug={game.slug} index={index} />
+      <CardBackLabel.Provider value={game.slug === "nine-to-one" ? "9→1" : "G"}>
+        <Illustration slug={game.slug} index={index} />
+      </CardBackLabel.Provider>
     </div>
   );
 
@@ -128,12 +146,32 @@ function Illustration({ slug, index }: { slug: string; index: number }) {
   const cards =
     slug === "nine-to-one"
       ? [
-          { card: { value: 9, suit: "spades" as const }, x: 0, y: 6, rotate: -14 },
-          { card: { value: 14, suit: "hearts" as const }, x: 34, y: 0, rotate: 10 },
+          {
+            card: { value: 9, suit: "spades" as const },
+            x: 0,
+            y: 6,
+            rotate: -14,
+          },
+          {
+            card: { value: 14, suit: "hearts" as const },
+            x: 34,
+            y: 0,
+            rotate: 10,
+          },
         ]
       : [
-          { card: { value: 13, suit: "spades" as const }, x: 0, y: 6, rotate: -12 },
-          { card: { value: 7, suit: "hearts" as const }, x: 22, y: 0, rotate: 2 },
+          {
+            card: { value: 13, suit: "spades" as const },
+            x: 0,
+            y: 6,
+            rotate: -12,
+          },
+          {
+            card: { value: 7, suit: "hearts" as const },
+            x: 22,
+            y: 0,
+            rotate: 2,
+          },
           { faceDown: true, x: 46, y: 8, rotate: 16 },
         ];
   return (

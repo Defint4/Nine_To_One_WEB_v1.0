@@ -1,7 +1,12 @@
 "use client";
 
+import { createContext, useContext } from "react";
 import { usePrefs, type BackStyle } from "@/lib/prefs";
 import type { CardT } from "@/lib/types";
+
+/* Le marquage au dos des cartes : chaque jeu pose le sien autour de sa table
+   (« 9→1 » pour Nine to One, « G » pour le Goulag) ; ailleurs, la marque de la maison. */
+export const CardBackLabel = createContext("✦");
 
 /* Les faces viennent du deck « English pattern » de Dmitry Fomin (domaine public),
    servi depuis /public/cards — d'où les index J, Q, K, A repris dans toute l'interface. */
@@ -36,8 +41,18 @@ const SIZES = {
   xxs: { w: "w-5", radius: "rounded-[3px]", back: "text-[6px]", idx: "" },
   xs: { w: "w-6", radius: "rounded-[3px]", back: "text-[6px]", idx: "" },
   sm: { w: "w-9", radius: "rounded", back: "text-[8px]", idx: "text-[8px]" },
-  md: { w: "w-14", radius: "rounded-md", back: "text-[10px]", idx: "text-[11px]" },
-  lg: { w: "w-[4.5rem]", radius: "rounded-lg", back: "text-sm", idx: "text-[13px]" },
+  md: {
+    w: "w-14",
+    radius: "rounded-md",
+    back: "text-[10px]",
+    idx: "text-[11px]",
+  },
+  lg: {
+    w: "w-[4.5rem]",
+    radius: "rounded-lg",
+    back: "text-sm",
+    idx: "text-[13px]",
+  },
 } as const;
 
 type Props = {
@@ -63,6 +78,7 @@ export default function PlayingCard({
 }: Props) {
   const s = SIZES[size];
   const { back } = usePrefs();
+  const backLabel = useContext(CardBackLabel);
   const interactive = Boolean(onClick) && !disabled;
 
   const base = `${s.w} aspect-[2/3] ${s.radius} shrink-0 select-none transition-transform duration-150 ${className}`;
@@ -74,7 +90,8 @@ export default function PlayingCard({
 
   if (faceDown || !card) {
     // En minuscule, le dos se fond dans le tapis : bord clair pour rester visible.
-    const border = size === "xs" || size === "xxs" ? "border-white/30" : "border-black/40";
+    const border =
+      size === "xs" || size === "xxs" ? "border-white/30" : "border-black/40";
     return (
       <Wrapper interactive={interactive} onClick={onClick} disabled={disabled}>
         <span
@@ -86,7 +103,7 @@ export default function PlayingCard({
               <span
                 className={`${s.back} rounded border border-gold/50 px-1 font-bold text-gold/80`}
               >
-                9→1
+                {backLabel}
               </span>
             </span>
           )}
@@ -106,7 +123,9 @@ export default function PlayingCard({
           red ? "text-card-red" : "text-ink"
         }`}
       >
-        <span className={`${text} font-extrabold`}>{valueLabel(card.value)}</span>
+        <span className={`${text} font-extrabold`}>
+          {valueLabel(card.value)}
+        </span>
         <span className={glyph}>{SUIT_GLYPH[card.suit]}</span>
       </span>
     );
@@ -115,7 +134,9 @@ export default function PlayingCard({
   const red = card.suit === "hearts" || card.suit === "diamonds";
   return (
     <Wrapper interactive={interactive} onClick={onClick} disabled={disabled}>
-      <span className={`${base} ${ring} block overflow-hidden bg-white shadow-card-flat`}>
+      <span
+        className={`${base} ${ring} block overflow-hidden bg-white shadow-card-flat`}
+      >
         {/* Contexte de positionnement interne : le span externe garde la classe
             de position (absolute…) que l'appelant lui donne. */}
         <span className="relative block h-full w-full">

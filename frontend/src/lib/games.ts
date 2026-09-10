@@ -36,7 +36,7 @@ export const GAMES: GameMeta[] = [
     players: "2 à 6 joueurs",
     path: "/goulag",
     mat: "radial-gradient(130% 110% at 85% 15%, #4a5a6c 0%, #2b3644 45%, #171e28 100%)",
-    available: false,
+    available: true,
   },
 ];
 

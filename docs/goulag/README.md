@@ -69,8 +69,12 @@ backend/app/games/goulag/
   views.py       ce que chaque siège a le droit de voir
   bots.py        Facile (hasard) / Normal (heuristique), cadencement
   tests/         69 tests du moteur, dont 40 parties aléatoires complètes
-frontend/src/games/goulag/      écrans du jeu (à venir)
-frontend/src/app/goulag/        routes : /goulag, /goulag/table/[code] (à venir)
+frontend/src/games/goulag/
+  Home.tsx, TablePage.tsx   accueil et cadre de table communs (GameHome, TableFrame, Lobby)
+  Table.tsx                 la table : tapis en perspective, sièges, actions, fin de partie
+  useChoreography.tsx       rejoue les événements : vols de cartes, impacts, sons
+  socket.ts, types.ts       actions et vue du jeu
+frontend/src/app/goulag/        routes : /goulag, /goulag/table/[code]
 ```
 
 ## Actions WebSocket du jeu
