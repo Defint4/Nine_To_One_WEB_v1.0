@@ -12,6 +12,7 @@ application (PWA), une seule identité, un module par jeu.
 | Jeu | Slug | Joueurs | Doc |
 |---|---|---|---|
 | Nine to One | `nine-to-one` | 2 à 5, bots à 3 niveaux | [docs/nine-to-one](docs/nine-to-one/README.md) |
+| Goulag | `goulag` | 2 à 6, bots à 2 niveaux (interface à venir) | [docs/goulag](docs/goulag/README.md) |
 
 ```
 backend/
