@@ -295,7 +295,8 @@ export default function GameTable({ socket, view }: { socket: NineToOneSocket; v
       setSelectedKey(key);
       return;
     }
-    setSelectedKey(null);
+    // Second tap : la carte reste soulevée et part de là ; la sélection tombe
+    // d'elle-même quand la main change (ou si le choix ci-dessous est annulé).
     const copies = eligibleCopies(you, value);
     if (copies > 1) {
       setPendingValue({ value, copies });
@@ -310,7 +311,6 @@ export default function GameTable({ socket, view }: { socket: NineToOneSocket; v
     // Appui long : pose d'un coup toutes les copies de la valeur.
     if (!yourTurn || !view.playable_values.includes(value)) return;
     longPressRef.current = Date.now();
-    setSelectedKey(null);
     playCount(value, eligibleCopies(you, value));
   }
 
@@ -385,7 +385,12 @@ export default function GameTable({ socket, view }: { socket: NineToOneSocket; v
       </AnimatePresence>
 
       {pendingValue && (
-        <Sheet onClose={() => setPendingValue(null)}>
+        <Sheet
+          onClose={() => {
+            setPendingValue(null);
+            setSelectedKey(null);
+          }}
+        >
           <p className="mb-3 text-center font-bold">
             Tu as {pendingValue.copies} {valueLabel(pendingValue.value)}. Combien en poses-tu ?
           </p>
@@ -405,7 +410,12 @@ export default function GameTable({ socket, view }: { socket: NineToOneSocket; v
       )}
 
       {pendingSeven !== null && (
-        <Sheet onClose={() => setPendingSeven(null)}>
+        <Sheet
+          onClose={() => {
+            setPendingSeven(null);
+            setSelectedKey(null);
+          }}
+        >
           <p className="mb-3 text-center font-bold">Ton 7 impose quoi au joueur suivant ?</p>
           <div className="flex justify-center gap-2">
             <button
