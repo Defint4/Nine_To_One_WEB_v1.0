@@ -1,4 +1,4 @@
-import type { OpenRoom, PlayerProfile } from "./types";
+import type { LeaderboardPage, OpenRoom, PlayerProfile } from "./types";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -56,6 +56,17 @@ export function fetchMe(token: string) {
 
 export function fetchPlayerByPseudo(pseudo: string) {
   return request<PlayerProfile>(`/api/players/by-pseudo/${encodeURIComponent(pseudo)}`);
+}
+
+export const LEADERBOARD_PAGE = 25;
+
+/* Une page du classement d'un jeu (slug) ou de tous les jeux (null). `me` : le pseudo
+   dont on veut la place, renvoyée à part même si elle n'est pas dans la page. */
+export function fetchLeaderboard(game: string | null, offset: number, me?: string) {
+  const params = new URLSearchParams({ offset: String(offset), limit: String(LEADERBOARD_PAGE) });
+  if (game) params.set("game", game);
+  if (me) params.set("me", me);
+  return request<LeaderboardPage>(`/api/players/leaderboard?${params}`);
 }
 
 export function createRoom(token: string, game: string) {

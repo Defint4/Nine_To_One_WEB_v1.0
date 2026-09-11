@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.rate_limit import limiter
 from app.core.security import create_player_token
+from app.games.registry import get_game
 from app.players import service
 from app.players.dependencies import get_current_player
 from app.players.models import Player
-from app.players.schemas import EnterRequest, EnterResponse, PlayerOut
+from app.players.schemas import EnterRequest, EnterResponse, LeaderboardOut, PlayerOut
 
 router = APIRouter(prefix="/api/players", tags=["players"])
 
@@ -25,6 +26,23 @@ async def enter(
 @router.get("/me", response_model=PlayerOut)
 async def me(player: Player = Depends(get_current_player)) -> PlayerOut:
     return PlayerOut.from_player(player)
+
+
+@router.get("/leaderboard", response_model=LeaderboardOut)
+@limiter.limit("60/minute")
+async def leaderboard(
+    request: Request,
+    game: str | None = None,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(25, ge=1, le=100),
+    me: str | None = Query(None, max_length=20),
+    db: AsyncSession = Depends(get_db),
+) -> LeaderboardOut:
+    """Classement d'un jeu (slug) ou de tous les jeux cumulés, page par page."""
+    if game is not None and get_game(game) is None:
+        raise HTTPException(status_code=404, detail="Jeu inconnu.")
+    page = await service.leaderboard(db, game, offset, limit, me)
+    return LeaderboardOut.model_validate(page)
 
 
 @router.get("/by-pseudo/{pseudo}", response_model=PlayerOut)

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
+import { leaderboardPath } from "@/components/Leaderboard";
 import { LoadingScreen } from "@/components/Loading";
 import PlayingCard, { CardBackLabel } from "@/components/PlayingCard";
 import { fetchMe } from "@/lib/api";
@@ -72,6 +73,19 @@ export default function Page() {
           </li>
         ))}
       </ul>
+
+      <Link
+        href={leaderboardPath(null)}
+        className="mt-6 flex items-center justify-between rounded-2xl bg-black/25 px-5 py-4 ring-1 ring-white/10 active:translate-y-0.5"
+      >
+        <span>
+          <span className="block font-extrabold">Classement général</span>
+          <span className="block text-sm text-ivory-dim/75">
+            Toutes les victoires, tous les jeux.
+          </span>
+        </span>
+        <span className="text-gold">→</span>
+      </Link>
     </main>
   );
 }

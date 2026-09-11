@@ -1,6 +1,7 @@
 import uuid
+from dataclasses import dataclass
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.players.models import Player, PlayerGameStats
@@ -57,3 +58,76 @@ async def record_game_results(
         if player_id == loser_id:
             stats.lost += 1
     await db.commit()
+
+
+@dataclass
+class LeaderboardEntry:
+    rank: int
+    id: uuid.UUID
+    pseudo: str
+    avatar: str
+    played: int
+    won: int
+    lost: int
+
+
+@dataclass
+class LeaderboardPage:
+    total: int
+    entries: list[LeaderboardEntry]
+    # Position du joueur demandé (`me`), None s'il n'est pas classé.
+    me: LeaderboardEntry | None
+
+
+def _ranking(game: str | None):
+    """Le classement complet, numéroté : un jeu (slug) ou tous les jeux cumulés.
+
+    Victoires d'abord ; à victoires égales, celui qui a eu besoin de moins de
+    parties passe devant ; le pseudo départage le reste pour un ordre stable.
+    """
+    totals = (
+        select(
+            Player.id.label("id"),
+            Player.pseudo_key.label("pseudo_key"),
+            Player.pseudo.label("pseudo"),
+            Player.avatar.label("avatar"),
+            func.sum(PlayerGameStats.played).label("played"),
+            func.sum(PlayerGameStats.won).label("won"),
+            func.sum(PlayerGameStats.lost).label("lost"),
+        )
+        .join(PlayerGameStats, PlayerGameStats.player_id == Player.id)
+        .group_by(Player.id)
+    )
+    if game is not None:
+        totals = totals.where(PlayerGameStats.game == game)
+    totals = totals.subquery("totals")
+    rank = func.row_number().over(
+        order_by=(totals.c.won.desc(), totals.c.played.asc(), totals.c.pseudo_key.asc())
+    )
+    return select(totals, rank.label("rank")).subquery("ranking")
+
+
+async def leaderboard(
+    db: AsyncSession, game: str | None, offset: int, limit: int, me: str | None
+) -> LeaderboardPage:
+    ranking = _ranking(game)
+    total = await db.scalar(select(func.count()).select_from(ranking))
+    rows = await db.execute(select(ranking).order_by(ranking.c.rank).offset(offset).limit(limit))
+    mine = None
+    if me is not None:
+        row = (await db.execute(select(ranking).where(ranking.c.pseudo_key == me.lower()))).first()
+        if row is not None:
+            mine = _entry(row)
+    return LeaderboardPage(total=total or 0, entries=[_entry(r) for r in rows], me=mine)
+
+
+def _entry(row) -> LeaderboardEntry:
+    return LeaderboardEntry(
+        rank=row.rank,
+        id=row.id,
+        pseudo=row.pseudo,
+        avatar=row.avatar,
+        played=row.played,
+        won=row.won,
+        lost=row.lost,
+    )

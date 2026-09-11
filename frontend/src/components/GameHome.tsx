@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
+import { leaderboardPath } from "@/components/Leaderboard";
 import { TransitionOverlay } from "@/components/Loading";
 import { ApiError, createRoom, fetchMe, fetchRoom, joinRoom } from "@/lib/api";
 import { HUB_PATH, tablePath, type GameMeta } from "@/lib/games";
@@ -38,12 +39,20 @@ export default function GameHome({ game, header }: { game: GameMeta; header: Rea
 
   return (
     <main className="mx-auto flex min-h-0 w-full max-w-md grow flex-col overflow-y-auto px-5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4">
-      <Link
-        href={HUB_PATH}
-        className="mb-4 self-start rounded-xl py-2 pr-3 text-sm font-semibold text-ivory-dim/75 hover:text-ivory"
-      >
-        ‹ Tous les jeux
-      </Link>
+      <div className="mb-4 flex items-center justify-between">
+        <Link
+          href={HUB_PATH}
+          className="rounded-xl py-2 pr-3 text-sm font-semibold text-ivory-dim/75 hover:text-ivory"
+        >
+          ‹ Tous les jeux
+        </Link>
+        <Link
+          href={leaderboardPath(game.slug)}
+          className="rounded-xl py-2 pl-3 text-sm font-semibold text-gold/90 hover:text-gold"
+        >
+          Classement ›
+        </Link>
+      </div>
       {header}
       {profile && <Tables game={game} profile={profile} />}
     </main>

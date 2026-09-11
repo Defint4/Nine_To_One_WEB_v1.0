@@ -50,3 +50,23 @@ class PlayerOut(BaseModel):
 class EnterResponse(BaseModel):
     player: PlayerOut
     token: str
+
+
+class LeaderboardEntryOut(BaseModel):
+    rank: int
+    id: uuid.UUID
+    pseudo: str
+    avatar: str
+    played: int
+    won: int
+    lost: int
+
+    model_config = {"from_attributes": True}
+
+
+class LeaderboardOut(BaseModel):
+    total: int
+    entries: list[LeaderboardEntryOut]
+    me: LeaderboardEntryOut | None
+
+    model_config = {"from_attributes": True}

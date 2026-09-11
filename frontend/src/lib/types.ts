@@ -56,6 +56,20 @@ export type PlayerProfile = {
 
 export const NO_STATS: GameStats = { played: 0, won: 0, lost: 0 };
 
+export type LeaderboardEntry = GameStats & {
+  rank: number;
+  id: string;
+  pseudo: string;
+  avatar: string;
+};
+
+export type LeaderboardPage = {
+  total: number;
+  entries: LeaderboardEntry[];
+  /* La place du joueur demandé, null s'il n'a jamais joué. */
+  me: LeaderboardEntry | null;
+};
+
 export type OpenRoom = {
   code: string;
   game: string;
