@@ -92,6 +92,8 @@ AVATAR_ANIMALS = [
 # Délais avant d'agir (secondes) : un tour, un enchaînement, la mise en place en lobby.
 TURN_DELAY = (0.9, 1.7)
 CHASE_DELAY = (0.4, 0.8)
+# Tour du bot alors qu'un humain peut encore enchaîner sa bonne pioche.
+HUMAN_CHASE_DELAY = (2.2, 2.8)
 LOBBY_DELAY = 0.8
 
 # Score d'une valeur pour l'échange initial (Normal et Difficile) : les plus
@@ -282,7 +284,12 @@ def _plan(room: Room) -> tuple[str, int, float] | None:
             return "chase", i, random.uniform(*CHASE_DELAY)
     turn = state.turn_index
     if room.seats[turn].bot:
-        return "turn", turn, random.uniform(*TURN_DELAY)
+        # Un humain vient de faire « bonne pioche » : le bot lui laisse le temps
+        # d'enchaîner avant de jouer par-dessus.
+        human_chase = any(
+            not seat.bot and chase_value(state, i) is not None for i, seat in enumerate(room.seats)
+        )
+        return "turn", turn, random.uniform(*(HUMAN_CHASE_DELAY if human_chase else TURN_DELAY))
     return None
 
 

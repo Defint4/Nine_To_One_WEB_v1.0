@@ -72,6 +72,17 @@ export default function GameTable({ socket, view }: { socket: NineToOneSocket; v
   const [shaking, setShaking] = useState(false);
   const [flash, setFlash] = useState(false);
   const [nopeCard, setNopeCard] = useState<string | null>(null);
+  // Carte de la main soulevée par un premier tap ("valeur-couleur") : un second tap
+  // sur la même la joue. Évite de poser une carte en faisant défiler la main.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const handKeys = (view.players[view.your_seat]?.hand ?? [])
+    .map((c) => `${c.value}-${c.suit}`)
+    .join(" ");
+  useEffect(() => {
+    // La main change ou le tour passe : plus rien de soulevé.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedKey(null);
+  }, [handKeys, yourTurn]);
 
   // Cibles de vol pour les cartes qui entrent/sortent, fixées au moment des événements
   // serveur (juste avant le rendu de la nouvelle vue).
@@ -268,19 +279,23 @@ export default function GameTable({ socket, view }: { socket: NineToOneSocket; v
     else if (me.finish_rank === lastRank) sfx.lose();
   }, [finished, view.players, view.your_seat]);
 
-  function tapValue(value: number) {
+  function tapValue(value: number, key: string) {
     if (Date.now() - longPressRef.current < 500) return; // un appui long vient de jouer
     if (!yourTurn) return;
     if (!view.playable_values.includes(value)) {
       // Coup interdit : secousse + petit son, pour comprendre sans lire.
       sfx.nope();
-      const card = (you.hand ?? []).find((c) => c.value === value);
-      if (card) {
-        setNopeCard(`${card.value}-${card.suit}`);
-        setTimeout(() => setNopeCard(null), 350);
-      }
+      setSelectedKey(null);
+      setNopeCard(key);
+      setTimeout(() => setNopeCard(null), 350);
       return;
     }
+    if (selectedKey !== key) {
+      // Premier tap : la carte se soulève, le second la jouera.
+      setSelectedKey(key);
+      return;
+    }
+    setSelectedKey(null);
     const copies = eligibleCopies(you, value);
     if (copies > 1) {
       setPendingValue({ value, copies });
@@ -295,6 +310,7 @@ export default function GameTable({ socket, view }: { socket: NineToOneSocket; v
     // Appui long : pose d'un coup toutes les copies de la valeur.
     if (!yourTurn || !view.playable_values.includes(value)) return;
     longPressRef.current = Date.now();
+    setSelectedKey(null);
     playCount(value, eligibleCopies(you, value));
   }
 
@@ -326,6 +342,7 @@ export default function GameTable({ socket, view }: { socket: NineToOneSocket; v
         chaseValue={chaseValue}
         handEntry={handEntry}
         nopeCard={nopeCard}
+        selectedKey={selectedKey}
         onTapValue={tapValue}
         onLongPress={longPressValue}
         onFlip={(i) => socket.flip(i)}
@@ -833,6 +850,7 @@ function YourArea({
   chaseValue,
   handEntry,
   nopeCard,
+  selectedKey,
   onTapValue,
   onLongPress,
   onFlip,
@@ -845,7 +863,8 @@ function YourArea({
   chaseValue: number | null;
   handEntry: { keys: string[]; source: string | null; delay: number };
   nopeCard: string | null;
-  onTapValue: (value: number) => void;
+  selectedKey: string | null;
+  onTapValue: (value: number, key: string) => void;
   onLongPress: (value: number) => void;
   onFlip: (index: number) => void;
   onChase: () => void;
@@ -919,14 +938,15 @@ function YourArea({
               const lift = Math.abs(i - center) * spread * 1.1;
               const overlap = i === 0 ? "" : n <= 4 ? "ml-1.5" : n <= 7 ? "-ml-4" : "-ml-8";
               const entryIndex = handEntry.keys.indexOf(key);
+              const selected = selectedKey === key;
               return (
                 <motion.span
                   key={key}
                   layout
-                  animate={{ y: lift, opacity: 1, rotate }}
+                  animate={{ y: selected ? lift - 22 : lift, opacity: 1, rotate }}
                   exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.15 } }}
                   transition={{ type: "spring", stiffness: 480, damping: 32 }}
-                  className={`origin-bottom ${overlap}`}
+                  className={`origin-bottom ${overlap} ${selected ? "relative z-10" : ""}`}
                 >
                   <FlyIn
                     from={entryIndex >= 0 ? handEntry.source : null}
@@ -947,8 +967,13 @@ function YourArea({
                         card={card}
                         size="lg"
                         highlighted={playable}
+                        selected={selected}
                         onClick={
-                          chaseable ? onChase : yourTurn ? () => onTapValue(card.value) : undefined
+                          chaseable
+                            ? onChase
+                            : yourTurn
+                              ? () => onTapValue(card.value, key)
+                              : undefined
                         }
                         className={
                           chaseable ? "animate-urgent" : dimmed ? "opacity-70 saturate-[0.6]" : ""

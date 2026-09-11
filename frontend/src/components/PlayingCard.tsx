@@ -87,7 +87,7 @@ export default function PlayingCard({
 
   const base = `${s.w} aspect-[2/3] ${s.radius} card-edge shrink-0 select-none transition-transform duration-150 ${className}`;
   const ring = selected
-    ? "ring-2 ring-gold -translate-y-2"
+    ? "ring-[3px] ring-gold shadow-[0_0_18px_rgba(229,181,74,0.7)] -translate-y-2"
     : highlighted
       ? "ring-2 ring-gold/80 shadow-[0_0_14px_rgba(229,181,74,0.45)]"
       : "";
