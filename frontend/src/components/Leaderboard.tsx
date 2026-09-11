@@ -226,6 +226,9 @@ function Podium({ entries, me }: { entries: LeaderboardEntry[]; me: LeaderboardE
                   <span className="font-bold text-ivory">{entry.won}</span>{" "}
                   {entry.won > 1 ? "victoires" : "victoire"}
                 </p>
+                <p className="text-xs text-ivory-dim/55">
+                  {entry.played} {entry.played > 1 ? "parties" : "partie"}
+                </p>
               </>
             ) : (
               <>
@@ -304,14 +307,12 @@ function Row({ entry, mine, last }: { entry: LeaderboardEntry; mine: boolean; la
       </span>
       <Avatar id={entry.avatar} />
       <div className="min-w-0 grow">
-        <p className={`truncate font-bold ${mine ? "text-gold" : ""}`}>
-          {entry.pseudo}
-          {last && (
-            <span className="ml-2 rounded-full bg-card-red/20 px-2 py-0.5 text-[0.65rem] font-bold text-card-red ring-1 ring-card-red/40">
-              Lanterne rouge
-            </span>
-          )}
-        </p>
+        <p className={`truncate font-bold ${mine ? "text-gold" : ""}`}>{entry.pseudo}</p>
+        {last && (
+          <span className="mt-1 inline-block rounded-full bg-card-red/20 px-2 py-0.5 text-[0.65rem] font-bold text-card-red ring-1 ring-card-red/40">
+            Lanterne rouge
+          </span>
+        )}
         <WinBar entry={entry} />
       </div>
       <Score entry={entry} />
@@ -339,9 +340,14 @@ function WinBar({ entry }: { entry: LeaderboardEntry }) {
 function Score({ entry }: { entry: LeaderboardEntry }) {
   return (
     <div className="shrink-0 text-right">
-      <p className="text-xl font-extrabold leading-none tabular-nums">{entry.won}</p>
+      <p className="text-xl font-extrabold leading-none tabular-nums">
+        {entry.won}{" "}
+        <span className="text-xs font-semibold text-ivory-dim/70">
+          {entry.won > 1 ? "victoires" : "victoire"}
+        </span>
+      </p>
       <p className="mt-1 text-xs text-ivory-dim/60 tabular-nums">
-        sur {entry.played} {entry.played > 1 ? "parties" : "partie"}
+        {entry.played} {entry.played > 1 ? "parties jouées" : "partie jouée"}
       </p>
     </div>
   );

@@ -54,6 +54,13 @@ export default function Page() {
           <p className="truncate text-lg font-bold">{profile.pseudo}</p>
           <p className="text-sm text-ivory-dim/75">À quoi on joue ?</p>
         </div>
+        <Link
+          href={leaderboardPath(null)}
+          aria-label="Classement général"
+          className="rounded-xl p-2 text-gold active:scale-90"
+        >
+          <MedalIcon />
+        </Link>
         <button
           type="button"
           onClick={() => {
@@ -73,20 +80,21 @@ export default function Page() {
           </li>
         ))}
       </ul>
-
-      <Link
-        href={leaderboardPath(null)}
-        className="mt-6 flex items-center justify-between rounded-2xl bg-black/25 px-5 py-4 ring-1 ring-white/10 active:translate-y-0.5"
-      >
-        <span>
-          <span className="block font-extrabold">Classement général</span>
-          <span className="block text-sm text-ivory-dim/75">
-            Toutes les victoires, tous les jeux.
-          </span>
-        </span>
-        <span className="text-gold">→</span>
-      </Link>
     </main>
+  );
+}
+
+/* Médaille : ruban en V, disque à l'étoile. Mène au classement général. */
+function MedalIcon() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M6.5 2h4L12 4.8 13.5 2h4l-4 7.3h-3Z" opacity="0.8" />
+      <circle cx="12" cy="15.5" r="6" />
+      <path
+        d="m12 12 1.05 2.15 2.35.33-1.7 1.65.4 2.35L12 17.4l-2.1 1.08.4-2.35-1.7-1.65 2.35-.33Z"
+        fill="#0c2c22"
+      />
+    </svg>
   );
 }
 
