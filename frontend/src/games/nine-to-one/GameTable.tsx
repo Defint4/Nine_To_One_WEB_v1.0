@@ -920,9 +920,16 @@ function YourArea({
 
       {/* Ta main : éventail sans chevauchement quand elle est courte.
           w-max + mx-auto : centrée quand elle tient, accessible aux deux bouts
-          quand elle défile (justify-center rendrait la gauche inatteignable). */}
-      <div className="w-full overflow-x-auto pb-3 pt-4" ref={registerAnchor("hand")}>
-        <div className="mx-auto flex w-max items-end px-6">
+          quand elle défile (justify-center rendrait la gauche inatteignable).
+          Le défilement horizontal rogne aussi en hauteur : la marge haute absorbe
+          la carte soulevée (30 px + halo), le -mt garde la main à sa place. Cette
+          bande chevauche le bas du plateau : elle laisse passer les taps, seules
+          les cartes en reçoivent. */}
+      <div
+        className="pointer-events-none -mt-7 w-full overflow-x-auto pb-3 pt-11"
+        ref={registerAnchor("hand")}
+      >
+        <div className="pointer-events-auto mx-auto flex w-max items-end px-6">
           <AnimatePresence initial={false}>
             {hand.map((card, i) => {
               const key = `${card.value}-${card.suit}`;
